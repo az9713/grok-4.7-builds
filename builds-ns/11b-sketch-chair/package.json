@@ -1,0 +1,14 @@
+{
+  "name": "11b-sketch-chair",
+  "version": "1.0.0",
+  "description": "Kitchen chair: pencil sketch lifts into a cannon-es rigid-body chair.",
+  "type": "module",
+  "license": "ISC",
+  "dependencies": {
+    "cannon-es": "^0.20.0",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

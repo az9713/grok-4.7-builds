@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Voyager Golden Record</title>
+<style>
+body{margin:0;background:#14110e;color:#f4ead8;font:18px/1.45 Georgia,serif}
+main{max-width:760px;margin:0 auto;padding:32px 18px 80px}
+button{background:#f4ead8;color:#1a1612;border:0;padding:8px 12px;margin:4px;font:inherit;cursor:pointer}
+.slot{display:inline-block;width:120px;height:80px;margin:6px;background:#2a241c;vertical-align:top;padding:8px}
+#end{display:none}
+</style></head><body><main>
+<h1>Voyager Golden Record</h1>
+<p>Clean room, 1977. Mount the images, then the stylus. Nothing here is fetched after this page loads.</p>
+<div id="play"></div>
+<p id="note"></p>
+<div id="end"><h2>The probe is past Saturn.</h2><p>Voyager 1 launched 5 September 1977. The Golden Record's cover carries playing instructions. Saturn flyby: November 1980.</p></div>
+</main>
+<script>
+const FACTS=[{"prompt": "Which image goes on the record first?", "note": "The record was assembled at NASA JPL in 1977.", "choices": [{"label": "A calibration circle", "ok": true, "why": ""}, {"label": "A selfie from 2024", "ok": false, "why": "The record was closed in 1977. No later photograph is on it."}]}, {"prompt": "Mount the stylus.", "note": "The cartridge is a ceramic stylus, played from the outside in.", "choices": [{"label": "Ceramic stylus, outside in", "ok": true, "why": ""}, {"label": "A laser, inside out", "ok": false, "why": "It is an analog phonograph record, not an optical disc."}]}, {"prompt": "Send it.", "note": "", "choices": [{"label": "With Voyager 1, 5 September 1977", "ok": true, "why": ""}, {"label": "With Apollo 11, 1969", "ok": false, "why": "Apollo 11 did not carry the Golden Record."}]}];
+const play=document.getElementById("play");
+let step=0, mounted=[];
+function render(){
+  const f=FACTS[step];
+  play.innerHTML=`<p>${f.prompt}</p>`+f.choices.map((c,i)=>`<button data-i="${i}">${c.label}</button>`).join("");
+  document.getElementById("note").textContent=f.note||"";
+  play.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    const choice=f.choices[+b.dataset.i];
+    if(!choice.ok){ document.getElementById("note").textContent=choice.why; return; }
+    step++;
+    if(step>=FACTS.length){ play.innerHTML=""; document.getElementById("end").style.display="block"; }
+    else render();
+  });
+}
+render();
+</script></body></html>

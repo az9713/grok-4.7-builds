@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>THE LAST COURT OF THE MUSHROOM KING</title>
+<style>
+html,body{margin:0;height:100%;background:#120816;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+</style></head><body>
+<canvas id="c"></canvas>
+<script>
+const c=document.getElementById("c"), g=c.getContext("2d");
+let t0=performance.now();
+const spores=Array.from({length:90},()=>({a:Math.random()*6.28,r:Math.random(),s:0.2+Math.random()}));
+function cap(x,y,rad,col,stem){
+  g.fillStyle=stem; g.fillRect(x-rad*0.12,y,rad*0.24,rad*0.9);
+  g.fillStyle=col; g.beginPath(); g.ellipse(x,y,rad,rad*0.55,0,Math.PI,0); g.fill();
+  g.fillStyle="rgba(255,255,255,0.18)";
+  for(let i=-2;i<=2;i++){ g.beginPath(); g.moveTo(x+i*rad*0.18,y); g.lineTo(x+i*rad*0.08,y+rad*0.35); g.strokeStyle="rgba(90,40,20,0.35)"; g.stroke(); }
+}
+function frame(now){
+  const t=((now-t0)/1000)%15;
+  const w=innerWidth,h=innerHeight,d=devicePixelRatio;
+  c.width=w*d; c.height=h*d; g.setTransform(d,0,0,d,0,0);
+  const bg=g.createLinearGradient(0,0,0,h);
+  bg.addColorStop(0,"#1a0c22"); bg.addColorStop(1,"#2a140c");
+  g.fillStyle=bg; g.fillRect(0,0,w,h);
+  g.fillStyle="#1a100c"; g.fillRect(0,h*0.72,w,h*0.28);
+  const court=[[0.18,0.7,34,"#c45a3a"],[0.32,0.66,48,"#e7d2a2"],[0.5,0.6,78,"#d24a3a"],[0.68,0.66,46,"#e7d2a2"],[0.82,0.7,30,"#8a3a55"]];
+  court.forEach(([px,py,r,col],i)=>{
+    const bob=Math.sin(t*1.2+i)*3;
+    cap(w*px,h*py+bob,r,col,"#f2e2c8");
+  });
+  spores.forEach(s=>{
+    const x=w*0.5+Math.cos(s.a+t*s.s)*s.r*w*0.4;
+    const y=h*0.4+Math.sin(s.a*1.3+t*0.4)*s.r*h*0.3;
+    g.fillStyle="rgba(255,230,180,0.7)";
+    g.fillRect(x,y,2,2);
+  });
+  const reveal=Math.max(0,Math.min(1,(t-3.5)/2.2));
+  g.globalAlpha=reveal;
+  g.fillStyle="#f8ecc8";
+  g.textAlign="center";
+  g.font=`${Math.min(w*0.038,42)}px "Palatino Linotype", Palatino, serif`;
+  g.fillText("THE LAST COURT OF THE MUSHROOM KING", w/2, h*0.16);
+  g.globalAlpha=1;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script></body></html>

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KITCHEN, 4 A.M.</title>
+<style>
+html,body{margin:0;height:100%;background:#140d09;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+</style></head><body>
+<canvas id="c"></canvas>
+<script>
+const c=document.getElementById("c"), g=c.getContext("2d");
+let t0=performance.now();
+const steam=Array.from({length:40},()=>({x:Math.random(),y:Math.random(),v:0.15+Math.random()*0.2,w:8+Math.random()*16}));
+function frame(now){
+  const t=((now-t0)/1000)%15;
+  const w=innerWidth,h=innerHeight,d=devicePixelRatio;
+  c.width=w*d; c.height=h*d; g.setTransform(d,0,0,d,0,0);
+  g.fillStyle="#100c09"; g.fillRect(0,0,w,h);
+  const lamp=g.createRadialGradient(w*0.5,h*0.22,10,w*0.5,h*0.42,h*0.55);
+  lamp.addColorStop(0,"rgba(255,196,110,0.55)");
+  lamp.addColorStop(0.45,"rgba(180,90,30,0.18)");
+  lamp.addColorStop(1,"rgba(0,0,0,0)");
+  g.fillStyle=lamp; g.fillRect(0,0,w,h);
+  g.fillStyle="#1c140f";
+  g.fillRect(w*0.28,h*0.62,w*0.44,h*0.06);
+  g.fillStyle="#3a2418";
+  g.beginPath(); g.ellipse(w*0.5,h*0.58,46,16,0,0,7); g.fill();
+  g.fillStyle="#6a3a22";
+  g.fillRect(w*0.5-8,h*0.42,16,h*0.16);
+  steam.forEach(s=>{
+    const y=((s.y - t*s.v)%1+1)%1;
+    g.strokeStyle=`rgba(230,210,180,${0.15*(1-y)})`;
+    g.lineWidth=2;
+    g.beginPath();
+    g.moveTo(w*0.5+Math.sin(t*2+s.x*6)*s.w, h*0.4 - y*h*0.28);
+    g.quadraticCurveTo(w*0.5+s.w, h*0.36-y*h*0.2, w*0.5-s.w*0.4, h*0.3-y*h*0.1);
+    g.stroke();
+  });
+  const reveal=Math.max(0,Math.min(1,(t-4)/2));
+  g.globalAlpha=reveal;
+  g.fillStyle="#f3e2c4";
+  g.font=`${Math.min(w*0.06,64)}px "Palatino Linotype", Palatino, serif`;
+  g.textAlign="center";
+  g.fillText("KITCHEN, 4 A.M.", w/2, h*0.78);
+  g.globalAlpha=1;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script></body></html>

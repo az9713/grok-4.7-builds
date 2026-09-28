@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Angler</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+         font: 12px/1 ui-monospace, Consolas, monospace; color: #1a2430; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  #state span { padding: 0 6px; }
+  #state span.on { color: #d6ff6a; }
+</style>
+</head>
+<body>
+<canvas id="c" width="256" height="144"></canvas>
+<div id="state"><span data-s="idle">drift</span><span data-s="charge">lure</span><span data-s="jaws">jaws</span></div>
+<script>
+"use strict";
+const PAL = [
+  "#000000", "#020204", "#05060a", "#0a0c12",
+  "#10141c", "#16140e", "#241c12", "#0c1810",
+  "#163024", "#8aa060", "#d6ff6a", "#f4fff0",
+  "#1a2838", "#243044", "#6a8090", "#0a1020"
+];
+const RGB = PAL.map(h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16)));
+const W = 256, H = 144, T = 255;
+const fb = new Uint8Array(W * H);
+const cv = document.getElementById("c");
+const ctx = cv.getContext("2d");
+const img = ctx.createImageData(W, H);
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => (v + 0.5) / 16);
+const bayer = (x, y) => BAYER[(y & 3) * 4 + (x & 3)];
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+const hash = (x, y) => { let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+
+const FLOOR = 116;
+const bg = new Uint8Array(W * H);
+const motes = [];
+const weeds = [];
+
+function buildBackground() {
+  const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < W && y < H) bg[y * W + x] = c; };
+  const stamp = (g, x0, y0, map) => {
+    for (let y = 0; y < g.length; y++) for (let x = 0; x < g[y].length; x++) {
+      const ch = g[y][x]; if (ch === ".") continue;
+      put(x0 + x, y0 + y, map[ch]);
+    }
+  };
+  for (let y = 0; y < H; y++) {
+    const f = y / H;
+    for (let x = 0; x < W; x++) {
+      let c = 0;
+      if (f > 0.16 && bayer(x, y) < (f - 0.16) * 0.32) c = 1;
+      if (f > 0.38 && bayer(x + 1, y) < (f - 0.38) * 0.42) c = 2;
+      if (f > 0.6 && bayer(x, y + 1) < (f - 0.6) * 0.5) c = 3;
+      if (f > 0.78 && bayer(x + 2, y) < (f - 0.78) * 0.65) c = 15;
+      if (hash(x * 2, y * 5) < 0.01) c = Math.min(3, c + 1);
+      bg[y * W + x] = c;
+    }
+  }
+  const rock = (x0, y0, w, h, seed) => {
+    const base = hash(seed, 3) < 0.45 ? 4 : 3;
+    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+      const dx = (x - x0) / w, dy = (y - y0) / h;
+      if (dx * dx * 0.75 + (dy - 0.25) * (dy - 0.25) > 0.96) continue;
+      let c = base;
+      if (y === y0 || x === x0) c = Math.min(5, base + 1);
+      if (y === y0 + h - 1 || x === x0 + w - 1) c = 2;
+      const n = hash(x * 3 + seed, y * 7);
+      if (n < 0.08) c = 2;
+      if (n > 0.96) c = 5;
+      if (hash(seed, x + y) < 0.04) c = 1;
+      put(x, y, c);
+    }
+    if (hash(seed, 9) < 0.4) {
+      let cx = x0 + 2 + Math.floor(hash(seed, 11) * Math.max(2, w - 5)), cy = y0 + 2;
+      while (cy < y0 + h - 2) { put(cx, cy, 1); cy++; cx += hash(seed, cy) < 0.5 ? 0 : (hash(cy, seed) < 0.5 ? 1 : -1); }
+    }
+  };
+  for (let y = FLOOR; y < H; y++) for (let x = 0; x < W; x++) put(x, y, 2);
+  for (let row = 0, y = FLOOR; y < H; row++, y += 6) {
+    const off = row % 2 ? -7 : 0;
+    for (let x = off, k = 0; x < W; x += 14, k++) rock(x + 1, y + 1, 13, 5, row * 101 + k * 7);
+  }
+  rock(2, 92, 30, 30, 501);
+  rock(0, 106, 24, 22, 502);
+  rock(28, 108, 20, 18, 503);
+  rock(198, 94, 34, 28, 504);
+  rock(226, 104, 28, 26, 505);
+  rock(184, 110, 22, 20, 506);
+  rock(64, 112, 18, 14, 511);
+  rock(154, 114, 16, 12, 512);
+  rock(96, 118, 14, 10, 513);
+  const MW = { a: 5, b: 6, c: 7, d: 8, e: 4, f: 3, g: 12, h: 13, k: 0, n: 2 };
+  stamp([
+    "....aaa....",
+    "...abbaa...",
+    "..abbbbaa..",
+    ".aabbbbaae.",
+    "aaabbbbaaee",
+    "naeeeeeeenn",
+  ], 8, 100, MW);
+  stamp([
+    "...bb...",
+    "..bbbb..",
+    ".bbbbbb.",
+    "bbbbbbbb",
+    "eeeeeenn",
+  ], 216, 102, MW);
+  stamp([
+    "..c..",
+    ".cdc.",
+    "cdddc",
+    ".cnc.",
+    "..n..",
+  ], 48, 108, MW);
+  stamp([
+    "..c..",
+    ".cdc.",
+    "cdddc",
+    ".cnc.",
+  ], 170, 110, MW);
+  stamp([
+    "g..g",
+    ".gg.",
+    "..g.",
+  ], 80, 30, MW);
+  stamp([
+    "..g..",
+    ".g.g.",
+    "g...g",
+  ], 190, 22, MW);
+  const r = rng(19);
+  for (let i = 0; i < 96; i++) {
+    const x = Math.floor(r() * W), y = Math.floor(r() * 112);
+    if (bg[y * W + x] > 3) continue;
+    motes.push({ x, y, phase: Math.floor(r() * 32), c: r() < 0.12 ? 8 : r() < 0.4 ? 3 : 2, s: 0.12 + r() * 0.4 });
+  }
+  for (let n = 0; n < 18; n++) {
+    weeds.push({ x: 36 + Math.floor(r() * 180), y: FLOOR - 1 - Math.floor(r() * 6), h: 7 + Math.floor(r() * 12), ph: Math.floor(r() * 8) });
+  }
+  for (const w of weeds) {
+    for (let i = 0; i < w.h; i++) put(w.x + ((i % 3) - 1), w.y - i, i < 2 ? 7 : 8);
+  }
+  rock(40, 100, 16, 20, 520);
+  rock(120, 108, 22, 16, 521);
+  rock(140, 102, 18, 22, 522);
+  rock(240, 98, 16, 24, 523);
+  stamp([
+    "...eee...",
+    "..efffe..",
+    ".efffffe.",
+    "eefffffee",
+    "nnnnnnnnn",
+  ], 108, 104, MW);
+  stamp([
+    "..aa..",
+    ".abba.",
+    "abbbba",
+    ".aaaa.",
+    "..nn..",
+  ], 72, 106, MW);
+  stamp([
+    "ccc",
+    "cdc",
+    "ccc",
+    ".n.",
+  ], 88, 100, MW);
+  stamp([
+    "ccc",
+    "cdc",
+    "ccc",
+    ".n.",
+  ], 162, 98, MW);
+  stamp([
+    "h....h",
+    ".h..h.",
+    "..hh..",
+    ".h..h.",
+  ], 30, 18, MW);
+  stamp([
+    "..g..g..",
+    ".g.gg.g.",
+    "g......g",
+  ], 210, 36, MW);
+  for (let x = 8; x < 248; x += 20) rock(x, 122, 12, 8, 600 + x);
+  for (let i = 0; i < 20; i++) {
+    const bx = 16 + i * 12, by = 86 + (i % 4) * 2;
+    if (hash(bx, by) > 0.4) put(bx, by, 3), put(bx + 1, by + 1, 2);
+  }
+}
+
+const MAP = { 1: 4, 2: 3, 3: 12, 4: 13, 5: 6, 6: 5, 7: 0, 8: 14, 9: 8, a: 7, b: 2 };
+const BODY = [
+  "...............1111..........",
+  ".............11111111........",
+  "...........11111111111.......",
+  ".........1111111111111.......",
+  ".......1111114441111111......",
+  ".....1111111444411111111.....",
+  "....111111114441111111111....",
+  "...11111111111111111111111...",
+  "..1111111111111111111111111..",
+  "..1115555555555555555511111..",
+  ".11115555555555555555511111..",
+  ".111115555555555555555511111.",
+  "..1111111111111111111111111..",
+  "...11111111111111111111111...",
+  ".....1111111111111111111.....",
+  ".......111111111111111.......",
+  ".........11111111111.........",
+  "...........11111111..........",
+  ".............1111............",
+];
+const FIN_IDLE = [
+  "..1..",
+  ".121.",
+  "12221",
+  ".121.",
+  "..1..",
+];
+const FIN_SWEEP = [
+  "1....",
+  "121..",
+  "1221.",
+  ".1221",
+  "..121",
+];
+const TAIL = [
+  "11...",
+  "2211.",
+  "22221",
+  "2211.",
+  "11...",
+];
+const DORSAL = [
+  ".1.",
+  "121",
+  "222",
+  ".2.",
+];
+const JAW_SHUT = [
+  "..66666666666666.",
+  "...666666666666..",
+  "....5555555555...",
+];
+const JAW_HALF = [
+  "..66666666666666..",
+  ".6666666666666666.",
+  "..65555555555556..",
+];
+const JAW_OPEN = [
+  "..6666666666666666.",
+  ".666666666666666666",
+  "66677777777777777666",
+  ".667777777777777766.",
+  "..6555555555555556..",
+];
+const TEETH_UP = [8, 11, 14, 17, 20, 23];
+const PREY = [
+  "..88..",
+  ".8888.",
+  "888a88",
+  ".8888.",
+];
+const SPINE = [
+  "1",
+  "2",
+  "1",
+  "2",
+  "1",
+];
+const GILL = [
+  ".55.",
+  "5555",
+  ".55.",
+];
+const JAW_WIDE = [
+  "...6666666666666666...",
+  "..666666666666666666..",
+  ".66777777777777777766.",
+  "6677777777777777777766",
+  ".66555555555555555566.",
+  "..655555555555555556..",
+];
+const FIN_BACK = [
+  "....1",
+  "...12",
+  "..122",
+  ".1222",
+  "12221",
+];
+const EYE_OPEN = [
+  "88",
+  "8a",
+];
+const BONES = [
+  "b.b.b.b",
+  ".b.b.b.",
+  "b.b.b.b",
+];
+const CAVE_L = [
+  "4444333222111000........",
+  "44443332221111000.......",
+  "44333222111110000.......",
+  "4333222111110000........",
+  "33222111110000..........",
+  "322211111000............",
+  "2211111000..............",
+  "211111000...............",
+  "11111000................",
+  "1111000.................",
+  "111000..................",
+  "11000...................",
+  "1000....................",
+  "000.....................",
+  "00......................",
+];
+const CAVE_R = [
+  "........0001111222233344",
+  ".......00011112222333444",
+  ".......00001111222233344",
+  "........0000111122223334",
+  "..........00001111222333",
+  "............00011112223.",
+  "..............000111122.",
+  "...............00011112.",
+  "................0001111.",
+  ".................000111.",
+  "..................00011.",
+  "...................0001.",
+  "....................000.",
+  ".....................00.",
+  "......................0.",
+];
+const SILT = [
+  "bbbbbbbbbbbbbbbbbbbbbbbb",
+  "bnnbbnnbbnnbbnnbbnnbbnnb",
+  "bbbbbbbbbbbbbbbbbbbbbbbb",
+  "nnbbnnbbnnbbnnbbnnbbnnbb",
+  "bbbbbbbbbbbbbbbbbbbbbbbb",
+];
+const CORAL = [
+  "..9.9..",
+  ".9.a.9.",
+  "9.aaa.9",
+  ".9.a.9.",
+  "..9.9..",
+  "...9...",
+  "...a...",
+];
+const FINS_PAIR = [
+  "1.....1",
+  "21...12",
+  "221.122",
+  "2221222",
+];
+const MOUTH_DARK = [
+  "777777777777",
+  "700000000007",
+  "700000000007",
+  "777777777777",
+];
+const TRENCH = [
+  "444433322211100000111222333444",
+  "443332221111000000011122233344",
+  "433322211110000000001112223334",
+  "332221111000000000000111222333",
+  "222111100000000000000011122233",
+  "111110000000000000000001111222",
+  "111000000000000000000000111122",
+  "110000000000000000000000011112",
+  "100000000000000000000000001111",
+  "000000000000000000000000000111",
+];
+const LEDGE = [
+  "4444444333333222222111111",
+  "4433333222222111111000000",
+  "33322221111110000000.....",
+  "22211110000000...........",
+  "11100000.................",
+  "00000....................",
+];
+const BONES_BED = [
+  "b.b.b.b.b.b.b.b.b.b.b.b",
+  ".b.b.b.b.b.b.b.b.b.b.b.",
+  "b.b.b.b.b.b.b.b.b.b.b.b",
+  ".nnnnnnnnnnnnnnnnnnnnn.",
+];
+const KELP = [
+  "c",
+  "d",
+  "c",
+  "d",
+  "c",
+  "d",
+  "c",
+  "9",
+  "a",
+];
+function dressBg() {
+  const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < W && y < H) bg[y * W + x] = c; };
+  const stamp = (g, x0, y0, map) => {
+    for (let y = 0; y < g.length; y++) for (let x = 0; x < g[y].length; x++) {
+      const ch = g[y][x]; if (ch === ".") continue;
+      put(x0 + x, y0 + y, map[ch] === undefined ? MAP[ch] : map[ch]);
+    }
+  };
+  const MW = { a: 5, b: 6, c: 7, d: 8, e: 4, f: 3, g: 12, h: 13, k: 0, n: 2, "9": 8 };
+  const CV = { "0": 0, "1": 1, "2": 2, "3": 3, "4": 4 };
+  stamp(CAVE_L, 0, 8, CV);
+  stamp(CAVE_R, 232, 8, CV);
+  stamp(SILT, 80, 124, MW);
+  stamp(SILT, 160, 126, MW);
+  stamp(CORAL, 56, 96, MW);
+  stamp(CORAL, 148, 94, MW);
+  stamp(CORAL, 200, 100, MW);
+  stamp(TRENCH, 90, 70, CV);
+  stamp(LEDGE, 0, 70, CV);
+  stamp(LEDGE, 230, 74, CV);
+  stamp(BONES_BED, 100, 128, MW);
+  stamp(KELP, 62, 100, MW);
+  stamp(KELP, 152, 98, MW);
+  stamp(KELP, 204, 102, MW);
+  const RIDGE = [
+    "....4444333222111.......",
+    "...44433322211100.......",
+    "..443332221111000.......",
+    ".4333222111100000.......",
+    "33322211110000000.......",
+    "22211110000000000.......",
+    "11100000000000000.......",
+  ];
+  const SPORE = [
+    "..a..",
+    ".aaa.",
+    "a9a9a",
+    ".aaa.",
+    "..a..",
+  ];
+  const ABYSS = [
+    "000000000000000000000000",
+    "000000111100000011110000",
+    "000011111111001111111100",
+    "001111222211111122221111",
+    "111222333222222333322211",
+  ];
+  stamp(RIDGE, 70, 88, CV);
+  stamp(RIDGE, 150, 90, CV);
+  stamp(SPORE, 44, 92, MW);
+  stamp(SPORE, 132, 88, MW);
+  stamp(SPORE, 188, 94, MW);
+  stamp(ABYSS, 100, 60, CV);
+  const SHELF = [
+    "444444444444444444444444",
+    "433333333333333333333334",
+    "332222222222222222222233",
+    "221111111111111111111122",
+    "110000000000000000000011",
+    "00......................",
+  ];
+  const VENTS = [
+    "..a.a.a..",
+    ".a9a9a9a.",
+    "a9a.a.a9a",
+    ".a9a9a9a.",
+    "..a.a.a..",
+    "...n.n...",
+  ];
+  stamp(SHELF, 40, 50, CV);
+  stamp(SHELF, 160, 48, CV);
+  stamp(VENTS, 110, 108, MW);
+  stamp(VENTS, 170, 112, MW);
+  const CLIFF = [
+    "4444444333333222222111111000",
+    "44443333222221111110000000..",
+    "44333222211111000000........",
+    "433222111100000.............",
+    "33221111000.................",
+    "221111000...................",
+    "1110000.....................",
+    "00000.......................",
+  ];
+  const RUIN = [
+    "eeeefeeefeeefeeefe",
+    "efffefffefffefffef",
+    "eeeefeeefeeefeeefe",
+    "nnnnnnnnnnnnnnnnnn",
+    "bb.bb.bb.bb.bb.bb.",
+    ".bb.bb.bb.bb.bb.bb",
+  ];
+  stamp(CLIFF, 0, 40, CV);
+  stamp(CLIFF, 200, 44, CV);
+  stamp(RUIN, 88, 114, MW);
+  const FISSURE = [
+    "4.4.4.4.4.4.4.4.4.4.4.4.",
+    ".3.3.3.3.3.3.3.3.3.3.3.3",
+    "2.2.2.2.2.2.2.2.2.2.2.2.",
+    ".1.1.1.1.1.1.1.1.1.1.1.1",
+    "0.0.0.0.0.0.0.0.0.0.0.0.",
+    ".0.0.0.0.0.0.0.0.0.0.0.0",
+  ];
+  stamp(FISSURE, 60, 64, CV);
+  stamp(FISSURE, 140, 68, CV);
+  const NEEDLE = [
+    "...4...",
+    "...3...",
+    "..434..",
+    "..323..",
+    ".43234.",
+    ".32123.",
+    "4321234",
+    "3210123",
+  ];
+  stamp(NEEDLE, 24, 80, CV);
+  stamp(NEEDLE, 220, 82, CV);
+  const GLOWBUG = [
+    "a",
+    "9",
+    "a",
+  ];
+  stamp(GLOWBUG, 70, 40, MW);
+  stamp(GLOWBUG, 180, 28, MW);
+  stamp(GLOWBUG, 130, 18, MW);
+  const TEETH_BED = [
+    "aaa.aaa.aaa.aaa",
+    ".a.a.a.a.a.a.a.",
+    "nnnnnnnnnnnnnnn",
+  ];
+  stamp(TEETH_BED, 104, 130, MW);
+  const RIB = [
+    "b..b..b..b..b..b",
+    ".bb.bb.bb.bb.bb.",
+    "b..b..b..b..b..b",
+  ];
+  stamp(RIB, 96, 122, MW);
+  const SPIRE = [
+    "...4...",
+    "..434..",
+    ".43234.",
+    "4321234",
+    "3210123",
+    "2100012",
+    "1000001",
+    "0000000",
+  ];
+  stamp(SPIRE, 40, 72, CV);
+  stamp(SPIRE, 200, 76, CV);
+  const ARCH = [
+    "....444444....",
+    "...43333334...",
+    "..4322222234..",
+    ".432111112234.",
+    "4321000001234",
+    "3210000000123",
+  ];
+  stamp(ARCH, 108, 28, CV);
+  const RIDGE2 = [
+    "44443333222211110000....",
+    "443332222111100000......",
+    "433222111100000.........",
+    "32221110000.............",
+    "22111000................",
+    "111000..................",
+  ];
+  stamp(RIDGE2, 80, 82, CV);
+}
+
+const FPS = 12;
+const IDLE_END = 56, CHARGE_END = 80, JAW_END = 104, LOOP = 120;
+const DRIFT = [0,0,0,1,1,1,2,2,2,1,1,0,0,-1,-1,-1,0,0,1,1];
+const SHAKE = [[2,0],[-2,1],[1,-1],[-1,2],[2,1],[0,-1],[-1,0],[1,1],[0,-1],[-1,1],[1,0],[0,0]];
+
+function pose(t) {
+  const p = { phase: "idle", drift: 0, jaw: 0, lure: 0.15, blink: 0, open: 0, shake: [0, 0], fin: 0, spark: false, bite: false };
+  p.drift = DRIFT[t % DRIFT.length] + Math.sin(t * 0.18) * 5;
+  p.fin = (t % 8) < 4 ? 0 : 1;
+  if (t < IDLE_END) {
+    p.lure = 0.12 + 0.1 * Math.sin(t * 0.35) + (t % 14 < 2 ? 0.18 : 0);
+    const b = t % 50;
+    if (b === 22 || b === 23) p.blink = 1;
+    if (b === 40) p.blink = 1;
+  } else if (t < CHARGE_END) {
+    const c = t - IDLE_END;
+    p.phase = "charge";
+    p.lure = Math.min(1, 0.3 + c / 16);
+    p.jaw = c > 14 ? 1 : 0;
+    p.spark = c >= 6 && c % 2 === 0;
+    p.fin = 1;
+    if (c > 18) p.blink = 1;
+  } else if (t < JAW_END) {
+    const f = t - CHARGE_END;
+    p.phase = "jaws";
+    p.open = f < 4 ? f / 4 : f < 16 ? 1 : Math.max(0, 1 - (f - 16) / 8);
+    p.lure = 1 - p.open * 0.25;
+    p.jaw = 1;
+    p.bite = f < 18;
+    const amp = f < 5 ? 1 : f < 14 ? 0.5 : 0;
+    const s = SHAKE[f % SHAKE.length];
+    p.shake = amp === 1 ? s : amp ? [Math.sign(s[0]) * (f % 2), 0] : [0, 0];
+  } else {
+    const r = t - JAW_END;
+    p.jaw = r < 6 ? 1 : 0;
+    p.lure = 0.35;
+    p.open = 0;
+    p.blink = r === 8 ? 1 : 0;
+  }
+  return p;
+}
+
+const DW = 96, DH = 52;
+const dbuf = new Uint8Array(DW * DH);
+function dput(x, y, c) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < DW && y < DH) dbuf[y * DW + x] = c; }
+function drawGrid(g, x0, y0) {
+  for (let y = 0; y < g.length; y++) for (let x = 0; x < g[y].length; x++) {
+    const ch = g[y][x]; if (ch === ".") continue;
+    dput(x0 + x, y0 + y, MAP[ch]);
+  }
+}
+function disc(cx, cy, r, c) {
+  for (let y = Math.floor(cy - r); y <= Math.ceil(cy + r); y++)
+    for (let x = Math.floor(cx - r); x <= Math.ceil(cx + r); x++)
+      if ((x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= r * r) dput(x, y, c);
+}
+
+function drawAngler(p, t) {
+  dbuf.fill(T);
+  const y0 = 16 + Math.round(Math.sin(t * 0.12) * 2);
+  const x0 = 8;
+  drawGrid(TAIL, x0 - 4, y0 + 6);
+  drawGrid(p.fin ? FIN_SWEEP : FIN_IDLE, x0 + 6, y0 + 1);
+  drawGrid(DORSAL, x0 + 14, y0 - 2);
+  drawGrid(BODY, x0, y0);
+  drawGrid(GILL, x0 + 8, y0 + 8);
+  drawGrid(SPINE, x0 + 18, y0 - 1);
+  drawGrid(SPINE, x0 + 22, y0);
+  drawGrid(FIN_BACK, x0 + 2, y0 + 8);
+  drawGrid(BONES, x0 + 36, y0 + 16);
+  drawGrid(EYE_OPEN, x0 + 10, y0 + 5);
+  drawGrid(FINS_PAIR, x0 + 10, y0 + 12);
+  if (p.open > 0.5) drawGrid(MOUTH_DARK, x0 + 12, jy + 1);
+  const rodX = x0 + 26, rodY = y0 + 2;
+  for (let i = 0; i < 11; i++) {
+    const x = rodX + i;
+    const y = rodY - i - Math.round(Math.sin(t * 0.3 + i * 0.4) * (p.phase === "idle" ? 0.6 : 0.15));
+    dput(x, y, i < 7 ? 4 : 12);
+  }
+  const ex = rodX + 10, ey = rodY - 10;
+  const glow = p.lure;
+  disc(ex, ey, 2.2 + glow * 1.4, glow > 0.7 ? 10 : 9);
+  disc(ex, ey, 1.1, 11);
+  if (glow > 0.2) {
+    const R = 3 + glow * 8;
+    for (let y = 0; y < DH; y++) for (let x = 0; x < DW; x++) {
+      const c = dbuf[y * DW + x]; if (c === T) continue;
+      const d = Math.hypot(x - ex, y - ey); if (d > R) continue;
+      const I = glow * (1 - d / R) * 1.4, b = bayer(x, y);
+      if (I > b + 0.65) dbuf[y * DW + x] = c >= 9 ? 11 : 10;
+      else if (I > b + 0.3) dbuf[y * DW + x] = c <= 4 ? 8 : 9;
+      else if (I > b && c < 4) dbuf[y * DW + x] = 7;
+    }
+  }
+  const jy = y0 + 12 + Math.round(p.open * 4);
+  if (p.open > 0.55) drawGrid(p.open > 0.85 ? JAW_WIDE : JAW_OPEN, x0 + 6, jy);
+  else if (p.open > 0.2 || p.jaw) drawGrid(JAW_HALF, x0 + 7, y0 + 12);
+  else drawGrid(JAW_SHUT, x0 + 8, y0 + 12);
+  if (p.open > 0.4) {
+    for (const tx of TEETH_UP) {
+      dput(x0 + 8 + Math.round(tx * 0.35), jy, 11);
+      dput(x0 + 9 + Math.round(tx * 0.35), jy + 4, 11);
+    }
+    for (let y = jy + 1; y < jy + 4; y++) for (let x = x0 + 12; x < x0 + 28; x++) {
+      const c = dbuf[y * DW + x]; if (c !== 11) dput(x, y, 0);
+    }
+  }
+  const eye = x0 + 10;
+  dput(eye, y0 + 6, p.blink ? 4 : 14);
+  if (!p.blink) dput(eye + 1, y0 + 6, 11);
+  if (p.phase === "charge" && glow > 0.5) drawGrid(PREY, x0 + 48, y0 + 4);
+  const out = [];
+  for (let y = 0; y < DH; y++) for (let x = 0; x < DW; x++) {
+    if (dbuf[y * DW + x] !== T) continue;
+    if ((x > 0 && dbuf[y * DW + x - 1] !== T && dbuf[y * DW + x - 1] !== 0) ||
+        (x < DW - 1 && dbuf[y * DW + x + 1] !== T && dbuf[y * DW + x + 1] !== 0) ||
+        (y > 0 && dbuf[(y - 1) * DW + x] !== T && dbuf[(y - 1) * DW + x] !== 0) ||
+        (y < DH - 1 && dbuf[(y + 1) * DW + x] !== T && dbuf[(y + 1) * DW + x] !== 0)) out.push(y * DW + x);
+  }
+  for (const i of out) dbuf[i] = 0;
+  return { x0, y0, ex, ey, mx: x0 + 30, my: jy + 2 };
+}
+
+let debris = [];
+let R = rng(2);
+function stepDebris(p, m) {
+  for (const q of debris) { q.x += q.vx; q.y += q.vy; q.life--; if (q.k === "glow") q.vy -= 0.03; }
+  debris = debris.filter(q => q.life > 0 && q.x < W + 4 && q.x > -4);
+  if (p.bite) {
+    for (let i = 0; i < 7; i++) debris.push({ k: "bite", x: m.mx, y: m.my + R() * 6, vx: 2.4 + R() * 3.2, vy: (R() - 0.5) * 1.3, life: 10 + (R() * 8 | 0), c: R() < 0.5 ? 11 : 10 });
+  }
+  if (p.spark) debris.push({ k: "glow", x: m.ex, y: m.ey, vx: 0.2 + R() * 0.5, vy: -0.3 - R() * 0.4, life: 8 + (R() * 6 | 0), c: 10 });
+}
+function plot(x, y, c) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H) fb[y * W + x] = c; }
+function drawBlob(x, y, s, c) {
+  x = Math.round(x); y = Math.round(y);
+  const shapes = { 1: ["#"], 2: ["##", "##"], 3: [".#.", "###", ".#."] };
+  const g = shapes[s], o = s >> 1;
+  for (let j = 0; j < g.length; j++) for (let i = 0; i < g[j].length; i++)
+    if (g[j][i] === "#") plot(x + i - o, y + j - o, c);
+}
+
+function render(t) {
+  const p = pose(t);
+  fb.set(bg);
+  for (const s of motes) {
+    const x = ((s.x + t * s.s) % W + W) % W | 0;
+    const y = (s.y + Math.sin(t * 0.1 + s.phase) * 2 + H) % H | 0;
+    if ((t + s.phase | 0) % 7 !== 0) fb[y * W + x] = s.c;
+  }
+  for (const w of weeds) {
+    const sway = ((t + w.ph) % 10) < 5 ? 1 : 0;
+    for (let i = 2; i < w.h; i++) plot(w.x + sway + ((i % 3) - 1), w.y - i, i < 4 ? 7 : 8);
+  }
+  const DX = 36 + Math.round(p.drift), DY = 52;
+  const m = drawAngler(p, t);
+  stepDebris(p, { mx: DX + m.mx, my: DY + m.my, ex: DX + m.ex, ey: DY + m.ey });
+  if (p.lure > 0.35) {
+    const lx = DX + m.ex, ly = DY + m.ey;
+    for (let y = ly - 18; y < ly + 22; y++) for (let x = lx - 16; x < lx + 18; x++) {
+      if (x < 0 || y < 0 || x >= W || y >= H) continue;
+      const c = fb[y * W + x]; if (c > 4) continue;
+      const I = p.lure * (1 - Math.hypot(x - lx, y - ly) / 22);
+      if (I <= 0) continue;
+      if (I > bayer(x, y) + 0.5) fb[y * W + x] = c < 2 ? 8 : 9;
+      else if (I > bayer(x, y)) fb[y * W + x] = 7;
+    }
+    for (let k = 0; k < 10; k++) if (bayer(lx, ly + 8 + k) < p.lure * 0.4) plot(lx, ly + 12 + k, 8);
+  }
+  for (let y = 0; y < DH; y++) for (let x = 0; x < DW; x++) {
+    const c = dbuf[y * DW + x]; if (c === T) continue;
+    const sx = DX + x, sy = DY + y;
+    if (sx >= 0 && sy >= 0 && sx < W && sy < H) fb[sy * W + sx] = c;
+  }
+  for (const q of debris) {
+    if (q.k === "bite") drawBlob(q.x, q.y, q.life > 6 ? 3 : 2, q.c);
+    else plot(q.x, q.y, q.life > 4 ? 11 : 9);
+  }
+  const [ox, oy] = p.shake;
+  const d = img.data;
+  for (let y = 0; y < H; y++) {
+    const yy = Math.min(H - 1, Math.max(0, y + oy));
+    for (let x = 0; x < W; x++) {
+      const xx = Math.min(W - 1, Math.max(0, x + ox));
+      const rgb = RGB[fb[yy * W + xx]], o = (y * W + x) * 4;
+      d[o] = rgb[0]; d[o + 1] = rgb[1]; d[o + 2] = rgb[2]; d[o + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return p;
+}
+function fit() {
+  const s = Math.max(1, Math.floor(Math.min(innerWidth / W, (innerHeight - 40) / H)));
+  cv.style.width = W * s + "px"; cv.style.height = H * s + "px";
+}
+addEventListener("resize", fit); fit(); buildBackground(); dressBg();
+const labels = [...document.querySelectorAll("#state span")];
+let lastPhase = "";
+function showPhase(ph) { if (ph === lastPhase) return; lastPhase = ph; for (const l of labels) l.classList.toggle("on", l.dataset.s === ph); }
+const freeze = new URLSearchParams(location.search).get("frame");
+let tick = 0;
+if (freeze !== null) {
+  const N = Math.max(0, parseInt(freeze, 10) || 0); let p;
+  for (let i = 0; i <= N; i++) p = render(i % LOOP);
+  showPhase(p.phase);
+} else {
+  const start = performance.now();
+  (function loop(now) {
+    const want = Math.floor((now - start) / (1000 / FPS));
+    while (tick <= want) { const p = render(tick % LOOP); showPhase(p.phase); tick++; }
+    requestAnimationFrame(loop);
+  })(start);
+}
+</script>
+</body>
+</html>

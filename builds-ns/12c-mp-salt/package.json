@@ -1,0 +1,16 @@
+{
+  "name": "brine-flat",
+  "version": "1.0.0",
+  "description": "Localhost multiplayer brine trucks laying wet roads on a noon salt flat",
+  "private": true,
+  "type": "commonjs",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "three": "^0.169.0",
+    "ws": "^8.18.0"
+  }
+}

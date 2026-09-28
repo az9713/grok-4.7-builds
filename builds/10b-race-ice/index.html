@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Iceboats</title>
+<style>html,body{margin:0;height:100%;background:#111;color:#f4efe6;font:15px ui-monospace,Consolas,monospace}
+canvas{display:block;margin:0 auto;background:#0c0c10} #hud{position:fixed;left:12px;top:12px}</style></head>
+<body><div id="hud"></div><canvas id="c" width="960" height="540"></canvas>
+<script>
+const NAMES=["Skate Ira", "Lead Len", "Gust Gael", "Anchor Ann", "Floe Finn", "Wake Willa", "Berg Bo", "Mast Mo"], TRACKS=[{"name": "Open ice", "bg": "#d5e4ee", "line": "#f7fbff"}, {"name": "Fishing holes", "bg": "#b7c9d6", "line": "#16324a"}, {"name": "Black lead", "bg": "#1c2833", "line": "#9fd0ea"}], ITEMS=["gust", "drag anchor", "clear ice"];
+const c=document.getElementById("c"), g=c.getContext("2d"), hud=document.getElementById("hud");
+const keys={}; addEventListener("keydown",e=>keys[e.key]=true); addEventListener("keyup",e=>keys[e.key]=false);
+let track=0, laps=[0,0,0], times=[], t0=performance.now(), item=null, boost=0;
+const racers=NAMES.slice(0,4).map((n,i)=>({n, a:i*0.4, v:1.6+Math.random()*0.3, lap:0, best:null, you:i===0}));
+function loop(now){
+  const tr=TRACKS[track];
+  const dt=Math.min(0.032,(now-(loop.last||now))/1000); loop.last=now;
+  if(keys["ArrowLeft"]) racers[0].a-=2.2*dt;
+  if(keys["ArrowRight"]) racers[0].a+=2.2*dt;
+  const sp=(boost>0?2.4:1)+(item==="drag"?-0.4:0);
+  racers[0].v=sp;
+  racers.forEach((r,i)=>{
+    if(i) r.a += r.v*dt*0.15;
+    else r.a += r.v*dt*0.18;
+    if(r.a>Math.PI*2){ r.a-=Math.PI*2; r.lap++; if(r.you){ const lap=(now-t0)/1000; times.push(lap); r.best=times.length; if(r.lap>=3){ track=(track+1)%TRACKS.length; racers.forEach(x=>x.lap=0); t0=now; } } }
+  });
+  if(boost>0) boost-=dt;
+  if(Math.random()<0.004) item=ITEMS[(Math.random()*ITEMS.length)|0];
+  g.fillStyle=tr.bg; g.fillRect(0,0,960,540);
+  g.strokeStyle=tr.line; g.lineWidth=28; g.beginPath(); g.ellipse(480,270,300,160,0,0,7); g.stroke();
+  g.strokeStyle="#f4efe6"; g.lineWidth=2; g.stroke();
+  racers.forEach(r=>{
+    const x=480+Math.cos(r.a)*300, y=270+Math.sin(r.a)*160;
+    g.fillStyle=r.you?"#f2c14e":"#d0d4dc"; g.fillRect(x-8,y-8,16,16);
+    g.fillStyle="#111"; g.fillText(r.n.split(" ")[0], x-20, y-12);
+  });
+  g.fillStyle="#f4efe6"; g.font="16px Consolas";
+  g.fillText(tr.name+"  lap "+(racers[0].lap+1)+"/3  item:"+(item||"—"), 24, 36);
+  hud.textContent = NAMES.join(" · ")+"    best laps "+times.map(t=>t.toFixed(2)+"s").join(", ");
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script></body></html>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Candy Factory</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#111;color:#f4efe6;font:14px Georgia,serif}
+#bar{position:fixed;left:12px;bottom:12px;display:flex;gap:8px} button{padding:8px 10px;font:inherit;cursor:pointer}</style></head>
+<body>
+<div id="bar"></div>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+<script type="module">
+import * as THREE from "three";
+const A={"name": "Chocolate", "color": "#5a3218"}, B={"name": "Cold milk", "color": "#f4efe6"}, OUT={"name": "Fudge", "color": "#3a2418"};
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight); document.body.prepend(renderer.domElement);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 80);
+camera.position.set(8,8,10);
+const light=new THREE.DirectionalLight(0xffffff,1); light.position.set(5,10,4); scene.add(light); scene.add(new THREE.AmbientLight(0xffffff,0.4));
+const N=16, cells=new Uint8Array(N*N*N);
+const meshes=new Map();
+const geo=new THREE.BoxGeometry(0.92,0.92,0.92);
+const mats={1:new THREE.MeshStandardMaterial({color:A.color}),2:new THREE.MeshStandardMaterial({color:B.color,transparent:true,opacity:0.75}),3:new THREE.MeshStandardMaterial({color:OUT.color})};
+let tool=1, t=0;
+function key(x,y,z){return x+","+y+","+z}
+function set(x,y,z,v){
+  if(x<0||y<0||z<0||x>=N||y>=N||z>=N) return;
+  const k=key(x,y,z); const prev=cells[x+N*(y+N*z)];
+  if(prev && meshes.has(k)){ scene.remove(meshes.get(k)); meshes.delete(k); }
+  cells[x+N*(y+N*z)]=v;
+  if(!v) return;
+  const m=new THREE.Mesh(geo, mats[v]); m.position.set(x-N/2,y,z-N/2); scene.add(m); meshes.set(k,m);
+}
+for(let x=0;x<N;x++) for(let z=0;z<N;z++) set(x,0,z,1);
+function neighbors(x,y,z,id){ let n=0; [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]].forEach(([dx,dy,dz])=>{ if(x+dx>=0&&cells[(x+dx)+N*((y+dy)+N*(z+dz))]===id) n++; }); return n; }
+const bar=document.getElementById("bar");
+[A,B].forEach((spec,i)=>{ const b=document.createElement("button"); b.textContent=spec.name; b.onclick=()=>tool=i+1; bar.appendChild(b); });
+const ray=new THREE.Raycaster(), mouse=new THREE.Vector2();
+renderer.domElement.addEventListener("pointerdown", e=>{
+  mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-(e.clientY/innerHeight)*2+1;
+  ray.setFromCamera(mouse,camera);
+  const hits=ray.intersectObjects([...meshes.values()]);
+  if(!hits.length) return;
+  const p=hits[0].object.position.clone().add(hits[0].face.normal);
+  const x=Math.round(p.x+N/2), y=Math.round(p.y), z=Math.round(p.z+N/2);
+  if(e.button===2){ set(Math.round(hits[0].object.position.x+N/2), Math.round(hits[0].object.position.y), Math.round(hits[0].object.position.z+N/2), 0); return; }
+  const here=cells[x+N*(y+N*z)];
+  if((here===1 && tool===2) || (here===2 && tool===1)) set(x,y,z,3);
+  else if(!here) set(x,y,z,tool);
+});
+renderer.domElement.addEventListener("contextmenu", e=>e.preventDefault());
+addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+function tick(){
+  t+=0.016;
+  const elev=t=>{return '#cbb59a';};
+  scene.background=new THREE.Color(elev(t));
+  light.intensity=0.4+0.8*(0.5+0.5*Math.sin(t*0.15));
+  camera.lookAt(0,1,0);
+  renderer.render(scene,camera); requestAnimationFrame(tick);
+}
+tick();
+</script></body></html>

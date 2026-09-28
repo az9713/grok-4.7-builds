@@ -1,0 +1,13 @@
+.env
+**/.env
+node_modules/
+**/frames/
+**/screenshots/
+**/*.blend
+**/*.blend1
+**/*.log
+builds-ns/_*.py
+builds-ns/_*.js
+builds-ns/_*.mjs
+tools/
+.DS_Store

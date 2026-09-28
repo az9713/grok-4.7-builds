@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>THE LAST COURT OF THE MUSHROOM KING</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Cinzel:wght@400;600&display=block" rel="stylesheet">
+<style>
+:root{--bg:#0b0e07;--ink:#efe4b8;--mark:#d4ae3a;--dim:#7a7348}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden}
+body{display:grid;place-items:center;font-family:"Cinzel",serif}
+canvas{display:block}
+#gate{position:fixed;inset:0;display:grid;place-content:center;gap:22px;justify-items:center;
+  background:rgba(11,14,7,.76);border:0;color:var(--ink);cursor:pointer;font:inherit;
+  letter-spacing:.32em;text-transform:uppercase;font-size:12px;padding:16px;text-align:center}
+#gate[hidden]{display:none}
+#gate .play{display:grid;place-items:center;width:84px;height:84px;border:1px solid var(--mark);border-radius:50%;
+  transition:transform .4s cubic-bezier(.2,.8,.2,1),background .4s}
+#gate .play::before{content:"";margin-left:6px;border-left:18px solid var(--mark);border-top:11px solid transparent;border-bottom:11px solid transparent}
+#gate:hover .play,#gate:focus-visible .play{transform:scale(1.08);background:rgba(212,174,58,.14)}
+#gate:focus-visible{outline:none}
+#gate .k{color:var(--dim)}
+#gate .t{font-size:13px}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Title sequence for a film called THE LAST COURT OF THE MUSHROOM KING"></canvas>
+<button id="gate" type="button" hidden>
+  <span class="t">A title sequence</span>
+  <span class="play" aria-hidden="true"></span>
+  <span class="k" id="gateHint">15 seconds &middot; sound on &middot; space to play</span>
+</button>
+<script>
+"use strict";
+const DW = 1920, DH = 803, CX = DW / 2, CY = DH / 2, DUR = 15;
+const INK = '#efe4b8', GOLD = '#d4ae3a', DIM = '#7a7348';
+const SER = '"Cormorant Garamond", "Palatino Linotype", serif';
+const CIN = '"Cinzel", "Times New Roman", serif';
+const TITLE = 'THE LAST COURT OF THE MUSHROOM KING';
+const LINE = 'all threads bow';
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const off = document.createElement('canvas'), octx = off.getContext('2d');
+let S = 1;
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const eOutExpo = x => x >= 1 ? 1 : 1 - Math.pow(2, -10 * x);
+const eOutCubic = x => 1 - Math.pow(1 - x, 3);
+function hash(a, b = 0) {
+  let h = Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+const P = new Uint8Array(512);
+{ const p = [...Array(256).keys()]; let s = 33199;
+  for (let i = 255; i > 0; i--) { s = (s * 16807) % 2147483647; const j = s % (i + 1); [p[i], p[j]] = [p[j], p[i]]; }
+  for (let i = 0; i < 512; i++) P[i] = p[i & 255]; }
+const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+function grad(h, x, y, z) {
+  const u = h < 8 ? x : y, v = h < 4 ? y : (h === 12 || h === 14 ? x : z);
+  return ((h & 1) ? -u : u) + ((h & 2) ? -v : v);
+}
+function perlin(x, y, z) {
+  let X = Math.floor(x), Y = Math.floor(y), Z = Math.floor(z);
+  x -= X; y -= Y; z -= Z; X &= 255; Y &= 255; Z &= 255;
+  const u = fade(x), v = fade(y), w = fade(z);
+  const A = P[X] + Y, AA = P[A] + Z, AB = P[A + 1] + Z, B = P[X + 1] + Y, BA = P[B] + Z, BB = P[B + 1] + Z;
+  return lerp(lerp(lerp(grad(P[AA] & 15, x, y, z), grad(P[BA] & 15, x - 1, y, z), u),
+    lerp(grad(P[AB] & 15, x, y - 1, z), grad(P[BB] & 15, x - 1, y - 1, z), u), v),
+    lerp(lerp(grad(P[AA + 1] & 15, x, y, z - 1), grad(P[BA + 1] & 15, x - 1, y, z - 1), u),
+    lerp(grad(P[AB + 1] & 15, x, y - 1, z - 1), grad(P[BB + 1] & 15, x - 1, y - 1, z - 1), u), v), w);
+}
+function fbm(x, y, z, oct = 4) {
+  let a = 0, w = 1, s = 0;
+  for (let i = 0; i < oct; i++) { a += perlin(x, y, z) * w; s += w; x *= 2.05; y *= 2.05; z *= 1.55; w *= 0.51; }
+  return a / s;
+}
+function setFont(spec) { ctx.font = spec; }
+function spacedWidth(txt, ls) {
+  let w = 0; for (const ch of txt) w += ctx.measureText(ch).width;
+  return w + ls * Math.max(0, [...txt].length - 1);
+}
+function spaced(txt, x, y, ls, align = 'left') {
+  const w = spacedWidth(txt, ls);
+  let cx = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+  ctx.textAlign = 'left';
+  for (const ch of txt) { ctx.fillText(ch, cx, y); cx += ctx.measureText(ch).width + ls; }
+  return w;
+}
+const grains = [];
+function buildGrain() {
+  for (let n = 0; n < 6; n++) {
+    const g = document.createElement('canvas'); g.width = g.height = 256; const gc = g.getContext('2d');
+    const img = gc.createImageData(256, 256);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = Math.floor(hash(i, n + 17) * 255);
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255;
+    }
+    gc.putImageData(img, 0, 0); grains.push(ctx.createPattern(g, 'repeat'));
+  }
+}
+function finish(t) {
+  const fr = Math.floor(t * 24);
+  ctx.setTransform(S, 0, 0, S, 0, 0);
+  const v = ctx.createRadialGradient(CX, CY + 40, DH * 0.28, CX, CY, DW * 0.62);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.7)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, DW, DH);
+  const pat = grains[fr % grains.length];
+  ctx.save(); ctx.translate(hash(fr, 1) * -256, hash(fr, 2) * -256);
+  ctx.fillStyle = pat;
+  ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = 0.17; ctx.fillRect(0, 0, DW + 256, DH + 256);
+  ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.035; ctx.fillRect(0, 0, DW + 256, DH + 256);
+  ctx.restore();
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = `rgba(8,10,4,${0.018 + hash(fr, 9) * 0.04})`; ctx.fillRect(0, 0, DW, DH);
+  if (hash(fr, 5) < 0.26) {
+    ctx.fillStyle = hash(fr, 6) < 0.5 ? 'rgba(239,228,184,.42)' : 'rgba(0,0,0,.65)';
+    ctx.beginPath(); ctx.ellipse(hash(fr, 7) * DW, hash(fr, 8) * DH, 1 + hash(fr, 10) * 2.3, 0.7 + hash(fr, 11) * 1.4, hash(fr, 12) * 3, 0, 7); ctx.fill();
+  }
+  if (hash(fr, 13) < 0.05) {
+    const x = hash(fr, 14) * DW; ctx.fillStyle = 'rgba(212,174,58,.12)'; ctx.fillRect(x, 0, 1, DH);
+  }
+}
+function drawGround(t) {
+  const g = ctx.createLinearGradient(0, 0, 0, DH);
+  g.addColorStop(0, '#080b06'); g.addColorStop(0.45, '#10160c'); g.addColorStop(1, '#080c06');
+  ctx.fillStyle = g; ctx.fillRect(-20, -20, DW + 40, DH + 40);
+  const glow = ctx.createRadialGradient(CX, DH * 0.72, 20, CX, DH * 0.72, 520);
+  glow.addColorStop(0, `rgba(180,140,40,${0.12 * seg(t, 0.5, 3)})`); glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, DW, DH);
+}
+function branch(x, y, ang, len, depth, t, grow) {
+  if (depth <= 0 || len < 4 || grow <= 0) return;
+  const n = fbm(x * 0.01, y * 0.01, t * 0.08 + depth);
+  const a = ang + n * 0.35;
+  const x2 = x + Math.cos(a) * len * grow, y2 = y + Math.sin(a) * len * grow;
+  ctx.strokeStyle = `rgba(212,174,58,${0.08 + depth * 0.06})`;
+  ctx.lineWidth = Math.max(0.5, depth * 0.55);
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke();
+  const split = 0.62 + hash(depth * 17 + (x | 0), 3) * 0.2;
+  branch(x2, y2, a - 0.42 - n * 0.2, len * split, depth - 1, t, grow);
+  branch(x2, y2, a + 0.38 + n * 0.15, len * (split * 0.92), depth - 1, t, grow);
+  if (depth > 3 && hash(depth, (y | 0)) > 0.72) branch(x2, y2, a + n * 0.5, len * 0.55, depth - 2, t, grow);
+}
+function drawMycelium(t) {
+  const grow = eOutCubic(seg(t, 0.4, 6.2));
+  if (grow <= 0) return;
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const roots = [
+    [CX, DH + 10, -Math.PI / 2, 92, 7], [CX - 420, DH + 8, -Math.PI / 2 - 0.35, 78, 6],
+    [CX + 430, DH + 8, -Math.PI / 2 + 0.32, 80, 6], [CX - 760, DH + 4, -1.2, 64, 5],
+    [CX + 780, DH + 4, -1.95, 64, 5], [80, DH * 0.7, -0.15, 70, 5], [DW - 80, DH * 0.68, Math.PI + 0.15, 70, 5],
+  ];
+  for (const [x, y, ang, len, d] of roots) branch(x, y, ang, len, d, t, grow);
+  ctx.restore();
+}
+function extraHypha(t) {
+  const grow = eOutCubic(seg(t, 2.8, 8.0));
+  if (grow <= 0) return;
+  ctx.save(); ctx.lineCap = 'round';
+  for (let i = 0; i < 10; i++) {
+    const x0 = 100 + i * 180, y0 = DH - 8;
+    let x = x0, y = y0, ang = -Math.PI / 2 + (hash(i, 160) - 0.5) * 0.8;
+    ctx.strokeStyle = `rgba(212,174,58,${0.16 * grow})`; ctx.beginPath(); ctx.moveTo(x, y);
+    for (let s = 0; s < 18; s++) {
+      ang += (hash(i * 19 + s, 161) - 0.5) * 0.5;
+      x += Math.cos(ang) * 16 * grow; y += Math.sin(ang) * 14 * grow; ctx.lineTo(x, y);
+    }
+    ctx.lineWidth = 1.1; ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawMushrooms(t) {
+  const a = eOutCubic(seg(t, 1.8, 4.8)) * (1 - seg(t, 13.4, 14.8));
+  if (a <= 0) return;
+  ctx.save();
+  for (let i = 0; i < 22; i++) {
+    const x = 60 + hash(i, 100) * (DW - 120), base = DH - 20 - hash(i, 101) * 70;
+    const hgt = 18 + hash(i, 102) * 42, capW = 10 + hash(i, 103) * 22;
+    const grow = clamp((a - i * 0.03) / 0.7);
+    if (grow <= 0) continue;
+    ctx.globalAlpha = 0.55 * grow; ctx.fillStyle = '#3a2a10'; ctx.fillRect(x - 2, base - hgt * grow, 4, hgt * grow);
+    ctx.fillStyle = hash(i, 104) > 0.5 ? GOLD : '#a88830';
+    ctx.beginPath(); ctx.ellipse(x, base - hgt * grow, capW * grow, capW * 0.45 * grow, 0, Math.PI, 0, true); ctx.fill();
+    ctx.fillStyle = '#2a1c08';
+    ctx.beginPath(); ctx.ellipse(x, base - hgt * grow + 2, capW * 0.55 * grow, capW * 0.18 * grow, 0, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawHyphaeNodes(t) {
+  const a = seg(t, 2.0, 5.0);
+  if (a <= 0) return;
+  ctx.save(); ctx.globalCompositeOperation = 'screen';
+  for (let i = 0; i < 40; i++) {
+    const x = hash(i, 110) * DW, y = DH * 0.35 + hash(i, 111) * DH * 0.6;
+    const pulse = 0.5 + 0.5 * Math.sin(t * 1.7 + i);
+    ctx.globalAlpha = a * 0.18 * pulse; ctx.fillStyle = GOLD;
+    ctx.beginPath(); ctx.arc(x, y, 1.4 + pulse, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawSpores(t) {
+  const a = seg(t, 1.6, 3.4) * (1 - seg(t, 13.6, 14.9));
+  if (a <= 0) return;
+  ctx.save(); ctx.globalCompositeOperation = 'screen';
+  for (let i = 0; i < 70; i++) {
+    const life = (hash(i, 60) + t * (0.04 + hash(i, 61) * 0.05)) % 1;
+    const x = hash(i, 62) * DW + Math.sin(t * 0.7 + i) * 18;
+    const y = DH - life * (DH + 40), r = 0.8 + hash(i, 63) * 2.6;
+    ctx.globalAlpha = a * (0.15 + 0.45 * (1 - life)) * (0.5 + 0.5 * hash(i, 64));
+    ctx.fillStyle = GOLD; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+function shieldPath(c, x, y, s) {
+  c.beginPath();
+  c.moveTo(x, y - s * 1.15);
+  c.bezierCurveTo(x + s * 0.95, y - s * 1.05, x + s * 1.05, y - s * 0.2, x + s * 0.92, y + s * 0.35);
+  c.bezierCurveTo(x + s * 0.7, y + s * 0.95, x + s * 0.25, y + s * 1.25, x, y + s * 1.38);
+  c.bezierCurveTo(x - s * 0.25, y + s * 1.25, x - s * 0.7, y + s * 0.95, x - s * 0.92, y + s * 0.35);
+  c.bezierCurveTo(x - s * 1.05, y - s * 0.2, x - s * 0.95, y - s * 1.05, x, y - s * 1.15);
+  c.closePath();
+}
+function drawHeraldry(t) {
+  const p = eOutExpo(seg(t, 2.2, 4.6)), out = 1 - seg(t, 13.2, 14.6);
+  if (p <= 0) return;
+  const x = CX, y = 268, s = 78 * lerp(0.86, 1, p);
+  ctx.save(); ctx.globalAlpha = Math.sqrt(p) * out;
+  if (p < 0.95) ctx.filter = `blur(${((1 - p) * 12).toFixed(2)}px)`;
+  ctx.fillStyle = '#161c0e'; shieldPath(ctx, x, y, s); ctx.fill();
+  ctx.strokeStyle = GOLD; ctx.lineWidth = 2.4; ctx.stroke();
+  ctx.save(); ctx.beginPath(); shieldPath(ctx, x, y, s * 0.92); ctx.clip();
+  ctx.fillStyle = '#1c2612'; ctx.fillRect(x - s, y - s * 1.3, s * 2, s * 2.8);
+  for (let i = 0; i < 9; i++) {
+    const gy = y - s * 0.15 + i * 7;
+    ctx.strokeStyle = `rgba(212,174,58,${0.12 + (i % 2) * 0.08})`; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x - s * 0.55, gy); ctx.quadraticCurveTo(x, gy + 10, x + s * 0.55, gy); ctx.stroke();
+  }
+  ctx.fillStyle = GOLD;
+  ctx.beginPath(); ctx.ellipse(x, y - s * 0.22, s * 0.42, s * 0.28, 0, Math.PI, 0, true); ctx.fill();
+  ctx.fillStyle = '#2a1a08'; ctx.beginPath(); ctx.ellipse(x, y - s * 0.18, s * 0.28, s * 0.12, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#c4a34a'; ctx.fillRect(x - 5, y - s * 0.12, 10, s * 0.55);
+  ctx.strokeStyle = GOLD; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(x, y - s * 0.58, s * 0.22, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+  for (let k = -2; k <= 2; k++) {
+    ctx.beginPath(); ctx.arc(x + k * 11, y - s * 0.72, 3.2, 0, 7); ctx.fillStyle = GOLD; ctx.fill();
+  }
+  ctx.fillStyle = GOLD;
+  ctx.beginPath(); ctx.moveTo(x, y + s * 0.55); ctx.lineTo(x - 7, y + s * 0.38); ctx.lineTo(x + 7, y + s * 0.38); ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.globalAlpha = 0.35 * p * out;
+  shieldPath(ctx, x, y, s * 1.08); ctx.stroke(); ctx.restore();
+}
+function drawSupporters(t) {
+  const p = eOutExpo(seg(t, 3.4, 5.6)) * (1 - seg(t, 13.2, 14.6));
+  if (p <= 0) return;
+  ctx.save(); ctx.globalAlpha = p;
+  for (const side of [-1, 1]) {
+    const x = CX + side * 168, y = 310;
+    ctx.fillStyle = '#4a3414'; ctx.fillRect(x - 6, y, 12, 70);
+    ctx.fillStyle = GOLD; ctx.beginPath(); ctx.ellipse(x, y, 38, 22, 0, Math.PI, 0, true); ctx.fill();
+    ctx.fillStyle = '#2a1c0a'; ctx.beginPath(); ctx.ellipse(x, y + 4, 22, 8, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(239,228,184,.35)'; ctx.lineWidth = 1;
+    for (let g = 0; g < 6; g++) {
+      ctx.beginPath(); ctx.moveTo(x - 18 + g * 7, y + 6); ctx.quadraticCurveTo(x, y + 22, x - 18 + g * 7, y + 38); ctx.stroke();
+    }
+    ctx.strokeStyle = GOLD; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(x, y - 28, 16, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawRibbon(t) {
+  const p = eOutCubic(seg(t, 4.4, 6.2)) * (1 - seg(t, 13.2, 14.6));
+  if (p <= 0) return;
+  const y = 412;
+  ctx.save(); ctx.globalAlpha = p; ctx.fillStyle = '#2a220e';
+  ctx.beginPath(); ctx.moveTo(CX - 130, y); ctx.lineTo(CX + 130, y); ctx.lineTo(CX + 118, y + 22); ctx.lineTo(CX - 118, y + 22); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = GOLD; ctx.lineWidth = 1; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(CX - 70, y + 11); ctx.lineTo(CX - 12, y + 11); ctx.moveTo(CX + 12, y + 11); ctx.lineTo(CX + 70, y + 11); ctx.stroke();
+  ctx.fillStyle = GOLD; ctx.beginPath(); ctx.arc(CX, y + 11, 2.4, 0, 7); ctx.fill(); ctx.restore();
+}
+function drawSporeBurst(t) {
+  const a = seg(t, 6.8, 8.2) * (1 - seg(t, 12.5, 14.0));
+  if (a <= 0) return;
+  ctx.save(); ctx.globalCompositeOperation = 'screen';
+  for (let i = 0; i < 36; i++) {
+    const ang = (i / 36) * Math.PI * 2 + t * 0.15;
+    const r = 40 + eOutCubic(seg(t, 6.8, 10.5)) * (80 + hash(i, 120) * 70);
+    ctx.globalAlpha = a * 0.22 * (0.4 + 0.6 * hash(i, 121)); ctx.fillStyle = GOLD;
+    ctx.beginPath(); ctx.arc(CX + Math.cos(ang) * r, 268 + Math.sin(ang) * r * 0.72, 1.5 + hash(i, 122) * 2.2, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawCanopy(t) {
+  const a = seg(t, 0.5, 2.4);
+  ctx.save(); ctx.globalAlpha = a * 0.55;
+  for (let i = 0; i < 9; i++) {
+    const x = i * 240 - 80 + fbm(i, t * 0.05, 1) * 30, y = -20 + hash(i, 140) * 40;
+    ctx.fillStyle = i % 2 ? '#10180c' : '#0c1408';
+    ctx.beginPath(); ctx.ellipse(x, y, 180, 90, 0, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawVeil(t) {
+  const a = seg(t, 3.0, 5.2) * (1 - seg(t, 12.8, 14.4));
+  if (a <= 0) return;
+  ctx.save(); ctx.strokeStyle = `rgba(212,174,58,${0.12 * a})`; ctx.lineWidth = 0.8;
+  for (let i = 0; i < 16; i++) {
+    const x0 = CX - 220 + i * 28;
+    ctx.beginPath();
+    for (let y = 430; y < DH; y += 8) {
+      const x = x0 + fbm(i * 0.4, y * 0.01, t * 0.12) * 18;
+      y === 430 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawGoldDust(t) {
+  const a = seg(t, 4.0, 6.0) * (1 - seg(t, 13.0, 14.7));
+  if (a <= 0) return;
+  const fr = Math.floor(t * 18);
+  ctx.save(); ctx.globalCompositeOperation = 'screen';
+  for (let i = 0; i < 50; i++) {
+    ctx.globalAlpha = a * 0.12 * hash(i, 152); ctx.fillStyle = GOLD;
+    ctx.fillRect(hash(i + fr, 150) * DW, hash(i, 151) * DH, 1.4, 1.4);
+  }
+  ctx.restore();
+}
+function drawRing(t) {
+  const p = eOutCubic(seg(t, 3.6, 6.0)) * (1 - seg(t, 13.1, 14.5));
+  if (p <= 0) return;
+  ctx.save(); ctx.globalAlpha = 0.28 * p; ctx.strokeStyle = GOLD; ctx.lineWidth = 1.1;
+  for (let i = 0; i < 3; i++) {
+    const r = 120 + i * 28 + Math.sin(t * 0.8 + i) * 4;
+    ctx.beginPath(); ctx.ellipse(CX, 268, r, r * 0.62, 0, 0, 7); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawCapsules(t) {
+  const a = seg(t, 2.4, 4.8);
+  ctx.save();
+  for (let i = 0; i < 12; i++) {
+    ctx.globalAlpha = a * 0.12; ctx.fillStyle = GOLD;
+    ctx.beginPath(); ctx.ellipse(80 + hash(i, 170) * (DW - 160), 80 + hash(i, 171) * 180, 3 + hash(i, 172) * 5, 1.5, hash(i, 173), 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawCourtFloor(t) {
+  const a = seg(t, 1.0, 2.8);
+  ctx.save(); ctx.globalAlpha = 0.18 * a; ctx.strokeStyle = GOLD; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.ellipse(CX, DH - 30, 520, 70, 0, 0, 7); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(CX, DH - 30, 360, 46, 0, 0, 7); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(CX, DH - 30, 200, 24, 0, 0, 7); ctx.stroke();
+  ctx.restore();
+}
+function drawCrownSparks(t) {
+  const a = seg(t, 4.8, 6.4) * (1 - seg(t, 13.0, 14.5));
+  if (a <= 0) return;
+  ctx.save(); ctx.globalCompositeOperation = 'screen';
+  for (let i = 0; i < 14; i++) {
+    const ang = -Math.PI / 2 + (i - 6.5) * 0.18, r = 92 + Math.sin(t * 2 + i) * 6;
+    ctx.globalAlpha = a * 0.35; ctx.fillStyle = GOLD;
+    ctx.beginPath(); ctx.arc(CX + Math.cos(ang) * r, 268 + Math.sin(ang) * r * 0.55, 2, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawGillsField(t) {
+  const a = seg(t, 2.0, 4.0);
+  ctx.save(); ctx.globalAlpha = 0.1 * a; ctx.strokeStyle = GOLD; ctx.lineWidth = 0.8;
+  for (let i = 0; i < 20; i++) {
+    const y = 470 + i * 14;
+    ctx.beginPath(); ctx.moveTo(CX - 300 - i * 4, y); ctx.quadraticCurveTo(CX, y + 18, CX + 300 + i * 4, y); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawCrestFill(t) {
+  const p = eOutExpo(seg(t, 2.8, 5.0)) * (1 - seg(t, 13.2, 14.6));
+  if (p <= 0) return;
+  ctx.save(); ctx.globalAlpha = 0.35 * p; ctx.strokeStyle = GOLD; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(CX, 210); ctx.lineTo(CX, 330); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(CX - 40, 270); ctx.lineTo(CX + 40, 270); ctx.stroke();
+  for (let i = 0; i < 8; i++) {
+    const ang = (i / 8) * Math.PI * 2 + t * 0.05;
+    ctx.beginPath();
+    ctx.moveTo(CX + Math.cos(ang) * 18, 250 + Math.sin(ang) * 12);
+    ctx.lineTo(CX + Math.cos(ang) * 36, 250 + Math.sin(ang) * 22);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawRootGlow(t) {
+  const a = seg(t, 1.2, 3.6);
+  ctx.save(); ctx.globalCompositeOperation = 'screen';
+  for (let i = 0; i < 8; i++) {
+    const x = 120 + i * 230, y = DH - 40;
+    const g = ctx.createRadialGradient(x, y, 4, x, y, 90);
+    g.addColorStop(0, `rgba(212,174,58,${0.16 * a})`); g.addColorStop(1, 'rgba(212,174,58,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 90, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawTitle(t) {
+  const chars = [...TITLE];
+  const pin = eOutExpo(seg(t, 5.6, 8.4)), pout = 1 - seg(t, 13.35, 14.75);
+  if (pin <= 0) return;
+  const size = 46;
+  setFont(`600 ${size}px ${SER}`); ctx.textBaseline = 'alphabetic';
+  const ls = lerp(18, 4.5, pin), y = CY + 168;
+  let total = 0;
+  const widths = chars.map(ch => { const w = ch === ' ' ? size * 0.32 : ctx.measureText(ch).width; total += w; return w; });
+  total += ls * (chars.length - 1);
+  let x = CX - total / 2;
+  for (let i = 0; i < chars.length; i++) {
+    const t0 = 5.6 + i * 0.055, p = eOutExpo(seg(t, t0, t0 + 0.75));
+    if (p <= 0) { x += widths[i] + ls; continue; }
+    ctx.save(); ctx.globalAlpha = Math.sqrt(p) * pout;
+    if (p < 0.96) ctx.filter = `blur(${((1 - p) * 7).toFixed(2)}px)`;
+    ctx.fillStyle = INK; ctx.textAlign = 'left'; ctx.fillText(chars[i], x, y + (1 - p) * 14);
+    ctx.restore(); x += widths[i] + ls;
+  }
+  const la = seg(t, 8.1, 9.1) * pout;
+  if (la > 0) {
+    ctx.globalAlpha = la * 0.75; ctx.fillStyle = GOLD; setFont(`400 15px ${CIN}`);
+    spaced(LINE, CX, y + 38, 8, 'center');
+    ctx.globalAlpha = la * 0.4; ctx.fillStyle = GOLD; ctx.fillRect(CX - 90, y + 16, 180, 1); ctx.globalAlpha = 1;
+  }
+}
+function render(t) {
+  t = clamp(t, 0, DUR);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
+  const shake = { x: Math.sin(t * 3.8) * 0.3, y: Math.cos(t * 2.9) * 0.25 };
+  ctx.setTransform(S, 0, 0, S, shake.x * S, shake.y * S);
+  drawGround(t); drawCanopy(t); drawCourtFloor(t); drawGillsField(t); drawRootGlow(t); drawMycelium(t); extraHypha(t);
+  drawHyphaeNodes(t); drawVeil(t); drawMushrooms(t); drawSpores(t); drawHeraldry(t); drawCrestFill(t); drawRing(t);
+  drawCrownSparks(t); drawSupporters(t); drawRibbon(t); drawSporeBurst(t); drawCapsules(t); drawGoldDust(t); drawTitle(t);
+  const black = 1 - seg(t, 0.0, 1.2) + seg(t, 14.5, 15);
+  if (black > 0) { ctx.fillStyle = `rgba(6,8,4,${clamp(black)})`; ctx.fillRect(-20, -20, DW + 40, DH + 40); }
+  finish(t);
+}
+let AC = null, comp = null, bus = null, verb = null, noiseBuf = null, T0 = 0;
+function audioInit() {
+  if (AC) return;
+  AC = new (window.AudioContext || window.webkitAudioContext)();
+  comp = AC.createDynamicsCompressor();
+  comp.threshold.value = -20; comp.ratio.value = 3; comp.attack.value = 0.01; comp.release.value = 0.35;
+  comp.connect(AC.destination);
+  const n = AC.sampleRate * 2; noiseBuf = AC.createBuffer(1, n, AC.sampleRate);
+  const d = noiseBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+}
+function impulse(sec, decay) {
+  const n = Math.floor(AC.sampleRate * sec), b = AC.createBuffer(2, n, AC.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, decay); }
+  return b;
+}
+function send(node, dry = 1, wet = 0) {
+  const g = AC.createGain(); g.gain.value = dry; node.connect(g); g.connect(bus);
+  if (wet) { const w = AC.createGain(); w.gain.value = wet; node.connect(w); w.connect(verb); }
+}
+function env(g, t, a, peak, d) {
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + a + d);
+}
+function osc(type, f) { const o = AC.createOscillator(); o.type = type; o.frequency.value = f; return o; }
+function celesta(t, f, amp) {
+  for (const [m, a, d] of [[1, 1, 2.8], [2.003, 0.45, 1.8], [4.01, 0.12, 1.1], [6.02, 0.05, 0.6]]) {
+    const o = osc('sine', f * m), g = AC.createGain();
+    env(g, t, 0.004, amp * a, d); o.connect(g); send(g, 0.75, 0.85); o.start(t); o.stop(t + d + 0.15);
+  }
+}
+function reed(t0, t1, f) {
+  const lp = AC.createBiquadFilter(); lp.type = 'bandpass'; lp.frequency.value = f * 2.2; lp.Q.value = 2.4;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.045, t0 + 1.6);
+  g.gain.setValueAtTime(0.045, t1 - 1.2); g.gain.linearRampToValueAtTime(0, t1);
+  lp.connect(g); send(g, 1, 0.5);
+  const o = osc('triangle', f), o2 = osc('sine', f * 2.01);
+  o.connect(lp); o2.connect(lp); o.start(t0); o.stop(t1); o2.start(t0); o2.stop(t1);
+}
+function drone(t0, t1) {
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.04, t0 + 2);
+  g.gain.setValueAtTime(0.04, t1 - 1); g.gain.linearRampToValueAtTime(0, t1);
+  send(g, 1, 0.3);
+  for (const f of [65.41, 98.0, 130.81]) { const o = osc('sine', f); o.connect(g); o.start(t0); o.stop(t1); }
+}
+function chime(t, f, amp) {
+  const o = osc('triangle', f), g = AC.createGain(), lp = AC.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 4200;
+  env(g, t, 0.002, amp, 1.1); o.connect(lp); lp.connect(g); send(g, 0.7, 0.9); o.start(t); o.stop(t + 1.3);
+}
+function rustle(t, amp) {
+  const n = AC.createBufferSource(); n.buffer = noiseBuf; n.loop = true;
+  const f = AC.createBiquadFilter(), g = AC.createGain();
+  f.type = 'bandpass'; f.frequency.value = 3200; f.Q.value = 1.2;
+  env(g, t, 0.03, amp, 0.4); n.connect(f); f.connect(g); send(g, 1, 0.2); n.start(t); n.stop(t + 0.5);
+}
+function score() {
+  audioInit();
+  if (bus) { try { bus.disconnect(); } catch (e) {} }
+  bus = AC.createGain(); bus.gain.value = 0.9; bus.connect(comp);
+  verb = AC.createConvolver(); verb.buffer = impulse(3.6, 2.2);
+  const vg = AC.createGain(); vg.gain.value = 0.48; verb.connect(vg); vg.connect(bus);
+  const T = AC.currentTime + 0.15; T0 = T;
+  drone(T, T + 15); reed(T + 1.2, T + 14.4, 196); reed(T + 4.8, T + 14.4, 246.94); reed(T + 8.2, T + 14.4, 164.81);
+  celesta(T + 2.6, 1046.5, 0.04); celesta(T + 4.1, 784, 0.035); celesta(T + 5.9, 1318.5, 0.038);
+  celesta(T + 7.4, 987.77, 0.032); celesta(T + 9.0, 1174.7, 0.036); celesta(T + 10.8, 880, 0.034);
+  celesta(T + 12.6, 698.46, 0.04); celesta(T + 14.1, 523.25, 0.03);
+  chime(T + 3.3, 1568, 0.02); chime(T + 6.6, 1397, 0.018); chime(T + 11.4, 2093, 0.016);
+  for (let k = 0; k < 8; k++) rustle(T + 1.5 + k * 1.55, 0.018);
+}
+const gate = document.getElementById('gate'), hint = document.getElementById('gateHint');
+let playing = false, clockStart = 0, useAudio = false, rafId = 0;
+function now() {
+  const pt = (performance.now() - clockStart) / 1000;
+  if (useAudio) { const at = AC.currentTime - T0; if (AC.state === 'running' && at > -0.14) return at; if (pt > 1) useAudio = false; }
+  return pt;
+}
+function play(withAudio) {
+  cancelAnimationFrame(rafId); gate.hidden = true; playing = true; useAudio = false;
+  if (withAudio) { try { score(); AC.resume(); useAudio = true; } catch (e) { useAudio = false; } }
+  clockStart = performance.now() + 150; rafId = requestAnimationFrame(loop);
+}
+function loop() {
+  if (!playing) return;
+  const t = now(); render(Math.max(0, t));
+  if (t < DUR + 0.25) rafId = requestAnimationFrame(loop);
+  else { playing = false; render(DUR); hint.textContent = 'play again · space'; gate.hidden = false; gate.focus(); }
+}
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const s = Math.min(innerWidth / DW, innerHeight / DH);
+  const w = Math.max(1, Math.floor(DW * s)), h = Math.max(1, Math.floor(DH * s));
+  cv.style.width = w + 'px'; cv.style.height = h + 'px';
+  cv.width = off.width = Math.round(w * dpr); cv.height = off.height = Math.round(h * dpr);
+  S = cv.width / DW;
+}
+const params = new URLSearchParams(location.search);
+(async function boot() {
+  resize(); buildGrain();
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  try {
+    await Promise.race([Promise.all([
+      document.fonts.load(`600 46px "Cormorant Garamond"`),
+      document.fonts.load(`400 15px Cinzel`),
+    ]), wait(3000)]);
+  } catch (e) {}
+  const still = params.has('t') ? parseFloat(params.get('t')) : null;
+  addEventListener('resize', () => { resize(); if (!playing) render(still ?? 0); });
+  if (still !== null && !Number.isNaN(still)) { render(still); document.body.dataset.ready = '1'; return; }
+  render(0);
+  if (params.has('autoplay')) { play(false); return; }
+  gate.hidden = false; gate.focus();
+  gate.addEventListener('click', () => play(true));
+  addEventListener('keydown', e => {
+    if ((e.code === 'Space' || e.code === 'Enter') && !gate.hidden) { e.preventDefault(); play(true); }
+    else if (e.key === 'r' || e.key === 'R') play(true);
+  });
+})();
+</script>
+</body>
+</html>

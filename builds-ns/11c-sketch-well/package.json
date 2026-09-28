@@ -1,0 +1,14 @@
+{
+  "name": "11c-sketch-well",
+  "version": "1.0.0",
+  "description": "Spiral well: pencil sketch lifts into a cannon-es rigid-body stair.",
+  "type": "module",
+  "license": "ISC",
+  "dependencies": {
+    "cannon-es": "^0.20.0",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

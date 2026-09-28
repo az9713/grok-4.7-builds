@@ -1,0 +1,1 @@
+{"name":"mp","type":"module","dependencies":{"express":"^4.21.2","ws":"^8.18.0"},"scripts":{"start":"node server.js"}}

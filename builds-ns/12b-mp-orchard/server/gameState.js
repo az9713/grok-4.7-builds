@@ -1,0 +1,149 @@
+'use strict';
+
+// Authoritative orchard state. The grid is frost on the grass:
+// 1.0 = a full coat of dawn frost, 0.0 = a dark lane the heated cart melted.
+// Melted cells slowly frost over again.
+
+const WORLD_SIZE = 120;
+const GRID_RES = 128;
+const CELL_SIZE = WORLD_SIZE / GRID_RES;
+const CLEAR_RADIUS_M = 1.4;
+const REFILL_TIME_S = 90;
+const REFILL_DELTA = 1 / (REFILL_TIME_S * (1000 / 80));
+
+const PLAYER_COLORS = [
+  0xc44536, 0x3d7dd9, 0x6a8f3a, 0xd9c93d,
+  0xa93dd9, 0xd9863d, 0x3dcdd9, 0xe85fa0
+];
+
+function worldToCell(x, z) {
+  const cx = Math.floor((x + WORLD_SIZE / 2) / CELL_SIZE);
+  const cz = Math.floor((z + WORLD_SIZE / 2) / CELL_SIZE);
+  return { cx, cz };
+}
+
+class GameState {
+  constructor() {
+    this.snow = new Float32Array(GRID_RES * GRID_RES).fill(1);
+    this.activeCells = new Set();
+    this.dirty = new Map();
+    this.players = new Map();
+    this.chatLog = [];
+    this._colorCursor = 0;
+  }
+
+  nextColor() {
+    const c = PLAYER_COLORS[this._colorCursor % PLAYER_COLORS.length];
+    this._colorCursor++;
+    return c;
+  }
+
+  addPlayer(id, name) {
+    const spawnAngle = Math.random() * Math.PI * 2;
+    const spawnR = 8 + Math.random() * 6;
+    const player = {
+      id,
+      name: name.slice(0, 20),
+      x: Math.cos(spawnAngle) * spawnR,
+      z: 18 + Math.sin(spawnAngle) * spawnR,
+      ry: Math.PI,
+      speed: 0,
+      color: this.nextColor(),
+      lastSeen: Date.now()
+    };
+    this.players.set(id, player);
+    return player;
+  }
+
+  removePlayer(id) {
+    this.players.delete(id);
+  }
+
+  updatePlayerState(id, x, z, ry, speed) {
+    const p = this.players.get(id);
+    if (!p) return;
+    const half = WORLD_SIZE / 2 - 2;
+    p.x = Math.max(-half, Math.min(half, x));
+    p.z = Math.max(-half, Math.min(half, z));
+    p.ry = ry;
+    p.speed = speed;
+    p.lastSeen = Date.now();
+  }
+
+  clearCircle(x, z) {
+    const rCells = Math.ceil(CLEAR_RADIUS_M / CELL_SIZE) + 1;
+    const { cx: centerCx, cz: centerCz } = worldToCell(x, z);
+    let changed = false;
+    for (let dz = -rCells; dz <= rCells; dz++) {
+      for (let dx = -rCells; dx <= rCells; dx++) {
+        const cx = centerCx + dx;
+        const cz = centerCz + dz;
+        if (cx < 0 || cz < 0 || cx >= GRID_RES || cz >= GRID_RES) continue;
+        const wx = (cx + 0.5) * CELL_SIZE - WORLD_SIZE / 2;
+        const wz = (cz + 0.5) * CELL_SIZE - WORLD_SIZE / 2;
+        const ddx = wx - x;
+        const ddz = wz - z;
+        if (ddx * ddx + ddz * ddz > CLEAR_RADIUS_M * CLEAR_RADIUS_M) continue;
+        const idx = cz * GRID_RES + cx;
+        if (this.snow[idx] > 0.02) {
+          this.snow[idx] = 0;
+          this.activeCells.add(idx);
+          this.dirty.set(idx, 0);
+          changed = true;
+        }
+      }
+    }
+    return changed;
+  }
+
+  refillTick() {
+    for (const idx of this.activeCells) {
+      let v = this.snow[idx] + REFILL_DELTA;
+      if (v >= 1) {
+        v = 1;
+        this.activeCells.delete(idx);
+      }
+      this.snow[idx] = v;
+      this.dirty.set(idx, Math.round(v * 255));
+    }
+  }
+
+  popDirtyDiff() {
+    if (this.dirty.size === 0) return null;
+    const diff = [];
+    for (const [idx, val] of this.dirty) diff.push([idx, val]);
+    this.dirty.clear();
+    return diff;
+  }
+
+  snapshotBase64() {
+    const bytes = Buffer.alloc(GRID_RES * GRID_RES);
+    for (let i = 0; i < this.snow.length; i++) {
+      bytes[i] = Math.round(this.snow[i] * 255);
+    }
+    return bytes.toString('base64');
+  }
+
+  playersList() {
+    const list = [];
+    for (const p of this.players.values()) {
+      list.push({ id: p.id, name: p.name, x: p.x, z: p.z, ry: p.ry, speed: p.speed, color: p.color });
+    }
+    return list;
+  }
+
+  addChat(id, name, text) {
+    const msg = { id, name, text: String(text).slice(0, 200), ts: Date.now() };
+    this.chatLog.push(msg);
+    if (this.chatLog.length > 50) this.chatLog.shift();
+    return msg;
+  }
+}
+
+module.exports = {
+  GameState,
+  WORLD_SIZE,
+  GRID_RES,
+  CELL_SIZE,
+  CLEAR_RADIUS_M
+};

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Salt flat</title>
+<style>html,body{margin:0;height:100%;background:#111;color:#f4efe6;font:16px Georgia,serif}
+canvas{background:#f4efe6;display:block;width:100%;height:70vh} #log{height:18vh;overflow:auto;padding:8px} form{display:flex;gap:8px;padding:8px}</style></head>
+<body>
+<canvas id="c" width="960" height="540"></canvas>
+<div id="log"></div>
+<form id="f"><input id="say" placeholder="chat" style="flex:1"><button>Send</button></form>
+<script>
+const params=new URLSearchParams(location.search);
+const name=params.get("name")||("guest"+((Math.random()*90)|10));
+const ws=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host);
+const me={name,x:200+Math.random()*200,y:220};
+const others=new Map();
+ws.onopen=()=>ws.send(JSON.stringify({t:"hi", name}));
+ws.onmessage=ev=>{
+  const m=JSON.parse(ev.data);
+  if(m.t==="state"){
+    const lag=Date.now()-m.at;
+    document.getElementById("log").dataset.lag=lag;
+    m.players.forEach(p=>{ if(p.name!==name) others.set(p.name,p); });
+  }
+  if(m.t==="chat"){
+    const d=document.createElement("div"); d.textContent=m.line.name+": "+m.line.text;
+    document.getElementById("log").appendChild(d);
+  }
+};
+const keys={}; addEventListener("keydown",e=>keys[e.key]=true); addEventListener("keyup",e=>keys[e.key]=false);
+document.getElementById("f").onsubmit=e=>{ e.preventDefault(); const text=document.getElementById("say").value; if(ws.readyState===1) ws.send(JSON.stringify({t:"say", text})); document.getElementById("say").value=""; };
+const c=document.getElementById("c"), g=c.getContext("2d");
+function loop(){
+  if(keys["ArrowLeft"]||keys["a"]) me.x-=3;
+  if(keys["ArrowRight"]||keys["d"]) me.x+=3;
+  if(keys["ArrowUp"]||keys["w"]) me.y-=3;
+  if(keys["ArrowDown"]||keys["s"]) me.y+=3;
+  if(ws.readyState===1) ws.send(JSON.stringify({t:"mv", x:me.x, y:me.y}));
+  g.clearRect(0,0,960,540);
+  g.fillStyle='#d9d3c8'; g.fillRect(0,400,960,140); g.fillStyle='#9aa0a6'; g.fillRect(620,220,160,36); g.fillText('airliner', 640, 214);
+  const draw=(p,mine)=>{ g.fillStyle=mine?"#f2c14e":"#f4efe6"; g.fillRect(p.x,p.y,18,28); g.fillText(p.name, p.x-8, p.y-6); };
+  draw(me,true); others.forEach(p=>draw(p,false));
+  g.fillText("sync "+(document.getElementById("log").dataset.lag||"?")+" ms", 16, 24);
+  requestAnimationFrame(loop);
+}
+loop();
+</script></body></html>

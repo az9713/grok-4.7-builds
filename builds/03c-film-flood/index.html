@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flash Flood</title>
+<style>
+html,body{margin:0;height:100%;background:#14110e;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+button{position:fixed;left:16px;bottom:16px;background:#f0e2cf;border:0;padding:8px 14px;font:16px Georgia,serif;cursor:pointer}
+</style></head><body>
+<canvas id="c"></canvas><button id="play">Play</button>
+<script>
+const c=document.getElementById("c"), g=c.getContext("2d");
+const DURATION=90; let actx, playing=false, started=0;
+function fit(){c.width=innerWidth*devicePixelRatio;c.height=innerHeight*devicePixelRatio;g.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}
+addEventListener("resize",fit); fit();
+function tone(freq,when,dur,type,gain){
+  const o=actx.createOscillator(), a=actx.createGain();
+  o.type=type; o.frequency.value=freq;
+  a.gain.setValueAtTime(0.0001,when); a.gain.exponentialRampToValueAtTime(gain,when+0.01); a.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+  o.connect(a); a.connect(actx.destination); o.start(when); o.stop(when+dur+0.02);
+}
+function compose(){
+  for(let i=0;i<DURATION;i+=0.55){
+    tone(98, actx.currentTime+i, 0.7, "sawtooth", 0.04);
+    tone(82+(i%5)*3, actx.currentTime+i, 1.1, "triangle", 0.05);
+    if(i%1.1<0.55) tone(140, actx.currentTime+i, 0.08, "square", 0.06);
+  }
+}
+function draw(now){
+  const w=innerWidth,h=innerHeight,t=playing?Math.min(DURATION,(now-started)/1000):0, p=t/DURATION;
+  g.fillStyle="#cbb89a"; g.fillRect(0,0,w,h);
+  g.strokeStyle="#6a5344"; g.lineWidth=2;
+  for(let i=0;i<18;i++){
+    g.beginPath();
+    const crack=p*40;
+    g.moveTo(w*0.2+i*30, h*0.2);
+    g.lineTo(w*0.25+i*28+crack, h*0.55);
+    g.lineTo(w*0.18+i*26, h*0.9);
+    g.stroke();
+  }
+  if(p>0.2){
+    for(let i=0;i<30;i++){
+      const x=(i*97+t*80)%w, y=((i*53+t*220)%h);
+      g.fillStyle="#3d6f8a"; g.fillRect(x,y,2,8);
+    }
+  }
+  if(p>0.4){
+    g.strokeStyle="#2f6d86"; g.lineWidth=3;
+    for(let b=0;b<4;b++){
+      g.beginPath();
+      for(let x=0;x<w;x+=10){
+        const y=h*(0.35+b*0.08)+Math.sin(x*0.02+t+b)*8+ (x/w)*20;
+        x?g.lineTo(x,y):g.moveTo(x,y);
+      }
+      g.stroke();
+    }
+  }
+  const wall=Math.max(0,(p-0.62)/0.25);
+  if(wall>0){
+    g.fillStyle=`rgba(28,74,92,${0.35+wall*0.5})`;
+    g.fillRect(0, h*(1-wall)*0.45, w, h);
+  }
+  g.fillStyle="#8a5a3a";
+  g.fillRect(w*0.62, h*0.62, 28, 22);
+  g.strokeStyle="#5a3a28"; g.strokeRect(w*0.62, h*0.62, 28, 22);
+  g.beginPath(); g.ellipse(w*0.62+14, h*0.62, 16, 6, 0, Math.PI, 0); g.stroke();
+  g.fillStyle="#1c140e"; g.font="28px Georgia,serif";
+  const label=p<0.2?"the ground opens":p<0.4?"rain finds the cracks":p<0.62?"channels braid":p<0.85?"the wall arrives":"the cup is still here";
+  g.fillText(label, 24, 46);
+  if(!playing||t<DURATION) requestAnimationFrame(draw);
+}
+document.getElementById("play").onclick=()=>{actx=new AudioContext(); compose(); playing=true; started=performance.now(); document.getElementById("play").remove();};
+requestAnimationFrame(draw);
+</script></body></html>

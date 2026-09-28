@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orchard Cart &mdash; Dawn Frost</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "../../../vendor/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+  <div id="join-screen">
+    <div id="join-card">
+      <h1>Orchard Cart</h1>
+      <p class="subtitle">Heated carts at dawn, in front of the cider barn. This page plays one cart. Two windows still need the local server.</p>
+      <label for="name-input">Your name</label>
+      <input id="name-input" type="text" maxlength="20" autocomplete="off" />
+      <button id="join-btn">Start the Route</button>
+      <p class="hint">WASD / Arrow keys to drive &middot; Enter to chat &middot; each browser window is its own cart</p>
+    </div>
+  </div>
+
+  <div id="hud" class="hidden">
+    <div id="crosshair-info">
+      <span id="speed-readout">0 km/h</span>
+    </div>
+    <canvas id="minimap"></canvas>
+    <div id="chat-overlay">
+      <div id="chat-log"></div>
+      <input id="chat-input" type="text" maxlength="200" placeholder="Press Enter to chat&hellip;" />
+    </div>
+    <div id="player-list"></div>
+  </div>
+
+  <div id="loading">Warming the carts&hellip;</div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

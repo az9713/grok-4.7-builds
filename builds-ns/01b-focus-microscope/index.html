@@ -1,0 +1,1244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Compound Microscope</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#040608; --panel:rgba(8,13,18,.80); --panel2:rgba(14,22,29,.9);
+  --line:rgba(120,222,236,.14); --line2:rgba(120,222,236,.34);
+  --cyan:#62e6f2; --cyan2:#2b8e98; --amber:#ffb65c; --text:#dbe6eb; --muted:#8398a2;
+  --warn:#ff8a70; --ok:#8fe3b0;
+  --f-disp:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:13px/1.45 var(--f-body);overflow:hidden}
+#stage{position:fixed;inset:0}
+#gl{width:100%;height:100%;display:block;touch-action:none;outline:none}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lab{position:absolute;transform:translate(-50%,-100%);white-space:nowrap;font:500 10.5px/1.2 var(--f-mono);color:var(--text);
+  background:rgba(4,8,11,.72);border:1px solid var(--line2);padding:3px 6px;border-radius:3px;letter-spacing:.02em}
+.lab b{color:var(--cyan);font-weight:500}
+.lab.part{border-color:rgba(255,182,92,.5)} .lab.part b{color:var(--amber)}
+.lab.plane{border-color:var(--cyan);box-shadow:0 0 12px rgba(98,230,242,.35)}
+.lab.bad{border-color:var(--warn)} .lab.bad b{color:var(--warn)}
+.lab::after{content:"";position:absolute;left:50%;top:100%;width:1px;height:10px;background:var(--line2)}
+header#top{position:fixed;top:12px;left:16px;right:16px;display:flex;align-items:center;gap:14px;pointer-events:none;z-index:5}
+header#top>*{pointer-events:auto}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+.brand h1{margin:0;font:700 20px/1 var(--f-disp);letter-spacing:.16em;text-transform:uppercase}
+.brand h1 span{color:var(--cyan)}
+.brand p{margin:0;font:400 11px/1 var(--f-mono);color:var(--muted);letter-spacing:.04em}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:4px;overflow:hidden;background:var(--panel)}
+.seg button{all:unset;cursor:pointer;padding:6px 10px;font:600 11px/1 var(--f-disp);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button:hover{color:var(--text);background:rgba(98,230,242,.06)}
+.seg button[aria-pressed="true"]{color:#021014;background:var(--cyan)}
+.seg button:focus-visible,.btn:focus-visible,.frame:focus-visible,#ciliary:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.seg.full{display:flex} .seg.full button{flex:1;text-align:center;padding:6px 4px}
+.col{position:fixed;top:60px;bottom:16px;display:flex;flex-direction:column;gap:10px;z-index:4}
+#left{left:16px;width:264px} #right{right:16px;width:304px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px;backdrop-filter:blur(8px)}
+.eyebrow{font:600 10.5px/1 var(--f-disp);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.cardhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.num{font:500 12px/1 var(--f-mono);color:var(--cyan);font-variant-numeric:tabular-nums}
+#ciliary{position:relative;cursor:ew-resize;user-select:none;touch-action:none;border-radius:4px}
+#ciliaryViz{width:100%;height:84px;display:block;border-radius:4px;background:#061015;border:1px solid var(--line)}
+.track{position:relative;height:18px;margin-top:8px}
+.track .rail{position:absolute;left:0;right:0;top:8px;height:2px;background:var(--line2)}
+.track .fill{position:absolute;left:0;top:8px;height:2px;background:linear-gradient(90deg,var(--cyan2),var(--warn))}
+.track .handle{position:absolute;top:1px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:#e9fbfd;border:3px solid #b8453a;box-shadow:0 0 10px rgba(255,138,112,.5)}
+.ends{display:flex;justify-content:space-between;font:400 10px/1 var(--f-mono);color:var(--muted);margin-top:3px}
+.kv{display:grid;grid-template-columns:1fr auto;gap:3px 10px;margin:8px 0 0;font:400 11.5px/1.35 var(--f-mono);font-variant-numeric:tabular-nums}
+.kv dt{color:var(--muted);white-space:nowrap} .kv dd{margin:0;text-align:right;color:var(--text)}
+.kv dd.hi{color:var(--cyan)} .kv dd.warn{color:var(--warn)} .kv dd.ok{color:var(--ok)}
+.hint{margin-top:7px;font:400 11px/1.35 var(--f-mono);color:var(--muted)}
+.hint b{color:var(--text);font-weight:500}
+.switch{display:flex;align-items:center;gap:8px;margin-top:9px;cursor:pointer;font:500 12px/1.2 var(--f-body)}
+.switch input{appearance:none;width:30px;height:16px;border-radius:9px;background:#18242c;border:1px solid var(--line2);position:relative;cursor:pointer;margin:0}
+.switch input::after{content:"";position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--muted);transition:left .15s}
+.switch input:checked{background:var(--cyan2)} .switch input:checked::after{left:16px;background:#eafcff}
+.switch input:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.switch small{margin-left:auto;font:400 10.5px/1 var(--f-mono);color:var(--cyan)}
+#console{flex:1;min-height:120px;display:flex;flex-direction:column;padding:0;overflow:hidden}
+#console .ch{display:flex;justify-content:space-between;padding:8px 12px 6px;border-bottom:1px solid var(--line)}
+#log{flex:1;overflow:auto;padding:6px 12px;font:400 11px/1.45 var(--f-mono);color:var(--muted);min-height:40px}
+#log div{white-space:pre-wrap} #log .me{color:var(--text)} #log .w{color:var(--warn)} #log .c{color:var(--cyan)}
+#cmd{all:unset;display:block;margin:0 12px 6px;padding:5px 7px;border:1px solid var(--line);border-radius:3px;font:400 11px/1 var(--f-mono);color:var(--text);background:#050a0e}
+#cmd:focus{border-color:var(--cyan)}
+.keys{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:3px 7px;padding:6px 12px 10px;border-top:1px solid var(--line);font:400 10.5px/1.3 var(--f-mono);color:var(--muted)}
+kbd{font:500 10px/1 var(--f-mono);color:var(--text);background:#13202a;border:1px solid var(--line2);border-bottom-width:2px;border-radius:3px;padding:2px 4px;text-align:center;min-width:18px;display:inline-block}
+#retinaCard{padding:8px}
+#retinaCard .cardhead{margin:2px 4px 6px}
+.retwrap{position:relative;aspect-ratio:4/3;max-width:100%;border-radius:4px;overflow:hidden;background:#000;border:1px solid var(--line2)}
+#retina{width:100%;height:100%;display:block}
+.retwrap .tag{position:absolute;left:6px;top:6px;font:500 10px/1 var(--f-mono);color:#fff;background:rgba(0,0,0,.55);padding:3px 5px;border-radius:2px;letter-spacing:.06em}
+.retwrap .axis{position:absolute;right:6px;bottom:6px;font:500 10px/1.2 var(--f-mono);color:var(--amber);text-align:right;background:rgba(0,0,0,.55);padding:3px 5px;border-radius:2px}
+.btn{all:unset;cursor:pointer;font:600 10.5px/1 var(--f-disp);letter-spacing:.1em;text-transform:uppercase;color:var(--cyan);border:1px solid var(--line2);border-radius:3px;padding:4px 7px}
+.btn:hover{background:rgba(98,230,242,.08)}
+#notes{flex:1;min-height:0;display:flex;flex-direction:column;padding:0}
+#notes .seg{margin:8px 10px 0;border-radius:3px;flex-wrap:wrap}
+#notes .seg button{padding:5px 6px;font-size:10px;letter-spacing:.06em}
+#noteBody{overflow:auto;padding:8px 12px 12px;flex:1}
+#noteBody h3{margin:2px 0 6px;font:600 15px/1.2 var(--f-disp);letter-spacing:.04em;text-wrap:balance}
+#noteBody p{margin:0 0 7px;color:#c3d2d8;font-size:12.5px;line-height:1.5}
+#noteBody .v{font-family:var(--f-mono);font-size:11.5px;color:var(--cyan);white-space:nowrap}
+#noteBody .src{font:400 10.5px/1.4 var(--f-mono);color:var(--muted)}
+#strip{position:fixed;bottom:16px;left:296px;right:336px;display:flex;justify-content:center;z-index:4;pointer-events:none}
+.film{pointer-events:auto;display:flex;gap:6px;padding:12px 10px;background:#0b0d0e;border-radius:3px;position:relative;
+  box-shadow:0 8px 30px rgba(0,0,0,.6);border:1px solid #1e2326}
+.film::before,.film::after{content:"";position:absolute;left:6px;right:6px;height:6px;
+  background:repeating-linear-gradient(90deg,transparent 0 5px,#2b3134 5px 12px,transparent 12px 16px)}
+.film::before{top:3px} .film::after{bottom:3px}
+.frame{all:unset;cursor:pointer;position:relative;display:block;width:132px;border:1px solid #2a3034;background:#000}
+.frame canvas{display:block;width:100%;aspect-ratio:4/3;max-width:100%}
+.frame .cap{display:flex;justify-content:space-between;gap:4px;padding:3px 5px;font:500 10px/1.2 var(--f-mono);color:#c9d4d8;background:#101416}
+.frame .cap b{color:var(--amber);font-weight:500}
+.frame .badge{position:absolute;top:4px;right:4px;font:600 9px/1 var(--f-disp);letter-spacing:.08em;padding:2px 4px;border-radius:2px;background:rgba(0,0,0,.65);color:var(--ok)}
+.frame .badge.no{color:var(--warn)}
+.frame[aria-pressed="true"]{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan),0 0 16px rgba(98,230,242,.35)}
+.frame .key{position:absolute;top:4px;left:4px}
+#toast{position:fixed;top:58px;left:50%;transform:translateX(-50%);max-width:min(560px,calc(100% - 32px));z-index:6;
+  font:500 12px/1.4 var(--f-body);background:rgba(40,16,10,.9);border:1px solid var(--warn);color:#ffd9cf;padding:7px 12px;border-radius:4px;transition:opacity .3s;opacity:0;pointer-events:none}
+#toast.show{opacity:1}
+#toast.info{background:rgba(6,30,34,.92);border-color:var(--cyan);color:#d6f7fa}
+#fail{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:20;background:var(--bg);padding:0 16px}
+#fail div{max-width:520px;font:400 14px/1.5 var(--f-body)} #fail b{color:var(--warn)}
+#help{position:fixed;inset:0;z-index:15;background:rgba(2,4,6,.82);display:flex;align-items:center;justify-content:center;padding:0 16px}
+#help[hidden]{display:none}
+#help .card{max-width:560px;padding:18px 20px}
+#help h2{margin:0 0 10px;font:700 18px/1.2 var(--f-disp);letter-spacing:.12em;text-transform:uppercase}
+#help .keys{border:0;padding:0;font-size:12px;gap:6px 10px}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important} }
+@media (max-width: 1100px){ #strip{left:16px;right:16px;bottom:auto;top:60px;justify-content:center} .frame{width:104px} }
+@media (max-width: 900px){
+  html,body{overflow:auto;height:auto}
+  #stage{position:relative;height:62vh}
+  header#top{position:absolute;flex-wrap:wrap}
+  .brand p{display:none}
+  .col{position:static;width:auto!important;padding:0 16px;margin-top:10px}
+  #strip{position:static;padding:10px 16px 0}
+  #console{min-height:260px}
+  #notes{min-height:320px}
+  #labels .lab{font-size:9px}
+}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="stage"><canvas id="gl" tabindex="0" aria-label="optical bench"></canvas><div id="labels"></div></div>
+
+<header id="top">
+  <div class="brand"><h1>Daylight <span>Scope</span></h1><p>160 mm tube · 10× eyepiece · dry objectives</p></div>
+  <div class="seg" id="viewSeg" role="group" aria-label="Instrument view">
+    <button data-v="0" aria-pressed="true">Assembled</button><button data-v="1" aria-pressed="false">Exploded</button>
+  </div>
+  <div class="seg" id="camSeg" role="group" aria-label="Camera">
+    <button data-c="overview" aria-pressed="true">Bench</button><button data-c="eye" aria-pressed="false">Tube</button><button data-c="diorama" aria-pressed="false">Diorama</button>
+  </div>
+  <button class="btn" id="helpBtn" aria-label="Keyboard shortcuts">? Keys</button>
+</header>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<aside class="col" id="left">
+  <section class="card">
+    <div class="cardhead"><span class="eyebrow">Fine focus · drag</span><span class="num" id="tensionPct">0%</span></div>
+    <div id="ciliary" role="slider" tabindex="0" aria-label="Focus knob" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <canvas id="ciliaryViz" width="520" height="168"></canvas>
+      <div class="track"><div class="rail"></div><div class="fill"></div><div class="handle"></div></div>
+      <div class="ends"><span>algae · 0 µm</span><span>silt · 400 µm</span></div>
+    </div>
+    <dl class="kv">
+      <dt>Resolution / NA</dt><dd class="hi" id="rA">0.00 D</dd>
+      <dt>Abbe d</dt><dd id="rT">3.60 mm</dd>
+      <dt>Working distance</dt><dd id="rR">10.00 mm</dd>
+    </dl>
+  </section>
+  <section class="card">
+    <div class="cardhead"><span class="eyebrow">Objective</span><span class="num" id="pupilNum">4 mm</span></div>
+    <div class="seg full" id="pupilSeg" role="group" aria-label="Objective">
+      <button data-p="4" aria-pressed="false">4×</button><button data-p="10" aria-pressed="true">10×</button><button data-p="40" aria-pressed="false">40×</button>
+    </div>
+    <div class="hint" id="dofHint"></div>
+  </section>
+  <section class="card">
+    <div class="cardhead"><span class="eyebrow">Condenser</span><span class="num" id="condNum">0.00 D</span></div>
+    <div class="seg full" id="condSeg" role="group" aria-label="Objective fault">
+      <button data-k="normal" aria-pressed="true">Bright</button><button data-k="myopia" aria-pressed="false">Dim</button><button data-k="hyperopia" aria-pressed="false">Oblique</button><button data-k="presbyopia" aria-pressed="false">Closed</button>
+    </div>
+    <label class="switch"><input type="checkbox" id="corrToggle"> Clean objective <small id="corrPower">plano</small></label>
+    <div class="hint" id="condHint"></div>
+  </section>
+  <section class="card" id="console">
+    <div class="ch"><span class="eyebrow">Console</span><span class="eyebrow" style="color:var(--cyan)">type “help”</span></div>
+    <div id="log" aria-live="polite"></div>
+    <input id="cmd" placeholder="› focus 2 · pupil 8 · cond myopia" aria-label="Console command" autocomplete="off" spellcheck="false">
+    <div class="keys">
+      <kbd>1-3</kbd><span>presets</span><kbd>← →</kbd><span>focus</span>
+      <kbd>Q W E</kbd><span>4× 10× 40×</span><kbd>X</kbd><span>explode</span>
+      <kbd>N M H P</kbd><span>condition</span><kbd>C</kbd><span>lens</span>
+      <kbd>I</kbd><span>flip image</span><kbd>V</kbd><span>camera</span>
+    </div>
+  </section>
+</aside>
+
+<aside class="col" id="right">
+  <section class="card" id="retinaCard">
+    <div class="cardhead"><span class="eyebrow">Image in the eyepiece</span><button class="btn" id="flipBtn">Show upright (I)</button></div>
+    <div class="retwrap"><canvas id="retina" width="400" height="300"></canvas><span class="tag" id="retTag">AS FORMED · INVERTED</span><span class="axis" id="retAxis">sky ↓ · ground ↑</span></div>
+  </section>
+  <section class="card">
+    <div class="eyebrow">Readout</div>
+    <dl class="kv" id="readout">
+      <dt>Plane of focus</dt><dd class="hi" id="oFocus">—</dd>
+      <dt>Sharp zone</dt><dd id="oDof">—</dd>
+      <dt>Magnification</dt><dd id="oPow">—</dd>
+      <dt>Lens power</dt><dd id="oLens">—</dd>
+      <dt id="oTgtL">Target</dt><dd id="oTgt">—</dd>
+      <dt>Specimen blur</dt><dd id="oBlur">—</dd>
+    </dl>
+  </section>
+  <section class="card" id="notes">
+    <div class="seg full" id="noteSeg" role="tablist" aria-label="Notes">
+      <button data-n="focus" aria-pressed="true">Focus</button><button data-n="blur" aria-pressed="false">Blur</button><button data-n="ciliary" aria-pressed="false">Knob</button><button data-n="pupil" aria-pressed="false">Pupil</button><button data-n="invert" aria-pressed="false">Inversion</button><button data-n="cond" aria-pressed="false">Errors</button>
+    </div>
+    <div id="noteBody"></div>
+  </section>
+</aside>
+
+<div id="strip"><div class="film" id="film" role="group" aria-label="Focus presets"></div></div>
+
+<div id="help" hidden><div class="card">
+  <h2>Keyboard</h2>
+  <div class="keys">
+    <kbd>1</kbd><span>Preset 1</span><kbd>2</kbd><span>Preset 2</span>
+    <kbd>3</kbd><span>Preset 3</span><kbd>← →</kbd><span>Focus up / down</span>
+    <kbd>Q</kbd><span>Stop 1</span><kbd>W</kbd><span>Stop 2</span>
+    <kbd>E</kbd><span>Stop 3</span><kbd>X</kbd><span>Assembled / exploded</span>
+    <kbd>N</kbd><span>Condition 1</span><kbd>M</kbd><span>Condition 2</span>
+    <kbd>H</kbd><span>Condition 3</span><kbd>P</kbd><span>Condition 4</span>
+    <kbd>C</kbd><span>Clean objective on / off</span><kbd>I</kbd><span>Image upright / as formed</span>
+    <kbd>F</kbd><span>Show / hide plane of focus</span><kbd>V</kbd><span>Next camera view</span>
+    <kbd>R</kbd><span>Reset camera</span><kbd>`</kbd><span>Type in the console</span>
+    <kbd>?</kbd><span>This panel</span><kbd>Esc</kbd><span>Close</span>
+  </div>
+</div></div>
+
+<div id="fail"><div><b>The 3D engine did not load.</b><br>This lab loads three.js 0.170 from cdn.jsdelivr.net. Check the internet connection, then reload the page. <span id="failMsg"></span></div></div>
+<script>
+window.addEventListener('error',function(e){var m=document.getElementById('failMsg');if(m&&!window.__eyeLabReady){m.textContent=' Error: '+(e.message||'unknown');}});
+setTimeout(function(){if(!window.__eyeLabStarted){document.getElementById('fail').style.display='flex';}},20000);
+setTimeout(function(){if(!window.__eyeLabReady){document.getElementById('fail').style.display='flex';}},90000);
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
+
+window.__eyeLabStarted = true;   // imports resolved: the CDN worked
+const $ = (s) => document.querySelector(s);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+
+/* ------------------------------------------------------------------
+   Optics. Textbook values (Gullstrand No. 1 schematic eye unless noted).
+   ------------------------------------------------------------------ */
+const OPT = {
+  eyeP: 58.64,          // relaxed eye power, D
+  corneaP: 43.05,       // cornea power, D
+  lensP0: 19.11,        // relaxed lens power, D
+  lensP1: 33.06,        // fully accommodated lens power, D
+  accG: 10.9,           // accommodation of Gullstrand's accommodated eye, D
+  L0: 1336 / 58.64,     // image distance from 2nd principal plane, mm (n = 1.336)
+  aRet: 23.1,           // photoreceptor layer at the pole in this model, mm behind cornea
+  aNodal: 7.2,          // nodal point, mm behind cornea (Gullstrand N 7.08 / N' 7.33)
+  aPupil: 3.6,          // iris plane, mm behind cornea
+  post: 16.7,           // nodal point to retina, mm (reduced eye, 1/60 D)
+  tol: 0.000873         // blur tolerance, rad (3 arcmin)
+};
+const COND = {
+  normal:     { label: 'Brightfield', na: 1, lens: 'clean front lens' },
+  myopia:     { label: 'Condenser dimmed', na: 0.72, lens: 'clean front lens' },
+  hyperopia:  { label: 'Oblique', na: 0.85, lens: 'clean front lens' },
+  presbyopia: { label: 'Condenser closed', na: 0.45, lens: 'clean front lens' }
+};
+const PRESETS = [
+  { id: 'algae', name: 'Algae', d: 0.40, view: 0.40, dist: '0 µm', mark: 'coverslip' },
+  { id: 'flea', name: 'Water flea', d: 0.90, view: 0.90, dist: '80 µm', mark: '80 µm' },
+  { id: 'silt', name: 'Silt', d: 2.40, view: 2.40, dist: '400 µm', mark: '400 µm' }
+];
+
+// Diorama: real distance// Diorama: real distance d (m) maps to bench position x (m from the cornea), log scale.
+const Xof = (d) => 0.24 + 1.46 * Math.log10(d / 0.1);
+const dOfX = (x) => 0.1 * Math.pow(10, (x - 0.24) / 1.46);
+const S = 0.028, EYE_Y = 1.5;                 // model scale: 1 mm of eye = 28 mm of model
+const W = (a, y = 0, z = 0) => new THREE.Vector3(-a * S, EYE_Y + y * S, z * S);
+const fmtD = (m) => m >= 1 ? m.toFixed(m < 10 ? 2 : 1) + ' m' : Math.round(m * 100) + ' cm';
+
+const qs = new URLSearchParams(location.search);
+const st = {
+  tension: 0, target: 0, pupil: 10, pupilR: 5, cond: 'normal', corr: false,
+  exploded: false, explode: 0, upright: false, showPlane: true, preset: 0, corrShow: 0, cam: 'overview'
+};
+
+/* ------------------------------ renderer ------------------------------ */
+const canvas = $('#gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.NoToneMapping;
+
+const scene = new THREE.Scene();
+const BG = new THREE.Color(0xc5d0dc);
+scene.background = BG;
+scene.fog = new THREE.FogExp2(0xc5d0dc, 0.045);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.16;
+
+const camera = new THREE.PerspectiveCamera(34, 16 / 9, 0.05, 60);
+const CAMS = {
+  overview: { p: [-2.7, 2.45, 3.7], t: [1.25, 1.36, -0.1] },
+  eye:      { p: [-0.12, 1.78, 2.45], t: [-0.18, 1.47, -0.05] },
+  diorama:  { p: [0.5, 1.95, 1.75],  t: [2.35, 1.45, 0] }
+};
+camera.position.set(...CAMS.overview.p);
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(...CAMS.overview.t);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 0.5; controls.maxDistance = 10; controls.maxPolarAngle = 1.55;
+let camTween = null;
+function goCam(name, instant = false) {
+  const c = CAMS[name]; if (!c) return;
+  camTween = { t: instant ? 1 : 0, p0: camera.position.clone(), t0: controls.target.clone(), p1: new THREE.Vector3(...c.p), t1: new THREE.Vector3(...c.t) };
+  document.querySelectorAll('#camSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.c === name));
+  st.cam = name;
+}
+
+/* --------------------------- texture helpers --------------------------- */
+function rnd(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return ((s >>> 0) % 1000003) / 1000003; }; }
+function ctex(w, h, draw, { srgb = true, rep = [1, 1] } = {}) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); draw(g, w, h);
+  const t = new THREE.CanvasTexture(c);
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep[0], rep[1]);
+  t.anisotropy = 8; return t;
+}
+function speckle(g, w, h, n, seed, fn) { const r = rnd(seed); for (let i = 0; i < n; i++) fn(g, r, r() * w, r() * h); }
+
+/* flags used by the blur pass */
+const dio = (o) => { o.traverse(m => { m.userData.dio = true; }); return o; };
+const noCoc = (o) => { o.traverse(m => { m.userData.noCoc = true; }); return o; };
+const shadow = (m, cast = true, recv = true) => { m.castShadow = cast; m.receiveShadow = recv; return m; };
+const std = (o) => new THREE.MeshStandardMaterial(o);
+
+/* ------------------------------- the room ------------------------------- */
+{
+  const floorTex = ctex(512, 512, (g, w, h) => {
+    g.fillStyle = '#b7c0c6'; g.fillRect(0, 0, w, h);
+    speckle(g, w, h, 12000, 7, (g, r, x, y) => { const v = 38 + r() * 46 | 0; g.fillStyle = `rgba(${v},${v + 2},${v + 4},${0.2 + r() * 0.35})`; g.fillRect(x, y, 1 + r() * 2, 1 + r() * 2); });
+    g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, 0, w, 2); g.fillRect(0, 0, 2, h);
+  }, { rep: [10, 8] });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 20), std({ map: floorTex, color: 0x8d949a, roughness: 0.5, metalness: 0.05 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.set(1.4, 0, 1.5); floor.receiveShadow = true; scene.add(floor);
+
+  const wallTex = ctex(1024, 512, (g, w, h) => {
+    g.fillStyle = '#d5dbe3'; g.fillRect(0, 0, w, h);
+    speckle(g, w, h, 7000, 3, (g, r, x, y) => { g.fillStyle = `rgba(255,255,255,${r() * 0.03})`; g.fillRect(x, y, 2, 2); });
+    g.fillStyle = 'rgba(0,0,0,.6)'; for (let x = 0; x < w; x += 256) g.fillRect(x, 0, 3, h);
+    g.fillStyle = '#12171b'; g.fillRect(0, h * 0.74, w, h); g.fillStyle = '#2a333a'; g.fillRect(0, h * 0.74, w, 5);
+  }, { rep: [6, 1] });
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(26, 6), std({ map: wallTex, roughness: 0.82 }));
+  wall.position.set(1.4, 3, -3.2); wall.receiveShadow = true; scene.add(wall);
+  const side = new THREE.Mesh(new THREE.PlaneGeometry(14, 6), std({ map: wallTex, roughness: 0.85, color: 0x9aa4ab }));
+  side.position.set(-5.2, 3, 2.5); side.rotation.y = Math.PI / 2; scene.add(side);
+
+  // ceiling light strips (emissive; bloom picks them up)
+  const stripMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.75, 1.9) });
+  for (const z of [-1.6, 1.2]) { const s = new THREE.Mesh(new THREE.BoxGeometry(7, 0.03, 0.08), stripMat); s.position.set(1.4, 4.2, z); scene.add(s); }
+
+  // a lab cabinet at the edge of the room
+  const cab = shadow(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.95, 0.6), std({ color: 0x20272c, roughness: 0.5, metalness: 0.4 })));
+  cab.position.set(-3.4, 0.475, -2.8); scene.add(cab);
+  const top = shadow(new THREE.Mesh(new THREE.BoxGeometry(1.46, 0.04, 0.64), std({ color: 0x0d1012, roughness: 0.3 })));
+  top.position.set(-3.4, 0.97, -2.8); scene.add(top);
+  const flask = new THREE.Mesh(new THREE.SphereGeometry(0.09, 24, 16), new THREE.MeshPhysicalMaterial({ color: 0x9fe8ee, roughness: 0.05, transparent: true, opacity: 0.35 }));
+  flask.position.set(-3.1, 1.08, -2.75); scene.add(noCoc(flask));
+}
+
+/* ----------------------------- optical bench ----------------------------- */
+const benchMat = std({ color: 0x16191c, metalness: 0.75, roughness: 0.3 });
+const alu = std({ color: 0x8c949a, metalness: 0.9, roughness: 0.28 });
+{
+  const rail = shadow(new THREE.Mesh(new THREE.BoxGeometry(6.7, 0.09, 0.2), benchMat)); rail.position.set(1.15, 0.955, 0); scene.add(rail);
+  const groove = new THREE.Mesh(new THREE.BoxGeometry(6.7, 0.012, 0.05), std({ color: 0x050607, roughness: 0.6 })); groove.position.set(1.15, 1.001, 0); scene.add(groove);
+  const ruler = ctex(4096, 64, (g, w, h) => {
+    g.fillStyle = '#0c0e10'; g.fillRect(0, 0, w, h); g.fillStyle = '#d9dfe2'; g.font = '22px IBM Plex Mono, monospace';
+    for (let i = 0; i <= 670; i++) { const x = i / 670 * w; const L = i % 10 === 0 ? 34 : i % 5 === 0 ? 22 : 12; g.fillRect(x, 0, 2, L); if (i % 10 === 0) g.fillText(String(i), x + 4, 58); }
+  });
+  const rp = new THREE.Mesh(new THREE.PlaneGeometry(6.7, 0.055), std({ map: ruler, roughness: 0.4, metalness: 0.2 })); rp.position.set(1.15, 0.955, 0.1011); scene.add(rp);
+  for (const x of [-1.7, 3.95]) {
+    const leg = shadow(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.91, 0.1), benchMat)); leg.position.set(x, 0.455, 0); scene.add(leg);
+    const foot = shadow(new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 0.9), benchMat)); foot.position.set(x, 0.02, 0); scene.add(foot);
+  }
+  // riders (carriers) with knobs
+  const rider = (x) => {
+    const g = new THREE.Group();
+    g.add(shadow(new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.05, 0.26), alu)));
+    const k = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.05, 16), std({ color: 0x111111, roughness: 0.5 }));
+    k.rotation.x = Math.PI / 2; k.position.set(0, 0, 0.15); g.add(k);
+    g.position.set(x, 1.025, 0); scene.add(g); return g;
+  };
+  rider(-0.36); rider(0.9); rider(3.9);
+  // eye mount: post + cradle
+  const post = shadow(new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.16, 16), alu)); post.position.set(-0.36, 1.12, 0); scene.add(post);
+  const cg = new THREE.TorusGeometry(0.335, 0.011, 10, 48, Math.PI); cg.rotateX(Math.PI); cg.rotateY(Math.PI / 2);
+  const cradle = shadow(new THREE.Mesh(cg, alu)); cradle.position.set(-0.36, EYE_Y, 0); scene.add(cradle);
+  // label plate on the rider
+  const plate = ctex(512, 128, (g, w, h) => { g.fillStyle = '#0e1215'; g.fillRect(0, 0, w, h); g.fillStyle = '#62e6f2'; g.font = '600 44px IBM Plex Sans Condensed, Arial Narrow, sans-serif'; g.fillText('COMPOUND MICROSCOPE · DIN 160 mm', 18, 60); g.fillStyle = '#8398a2'; g.font = '28px IBM Plex Mono, monospace'; g.fillText('160 mm tube · 10× eyepiece · dry objectives', 18, 104); });
+  const pm = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.085), std({ map: plate, roughness: 0.4, metalness: 0.3 }));
+  pm.position.set(-0.36, 1.04, 0.132); scene.add(pm);
+}
+
+/* ------------------------------------------------------------------
+   The eye model. Units inside the eye group are millimetres.
+   a = depth behind the corneal vertex, r = distance from the optical axis.
+   Lathe half-revolutions keep only z < 0, so the cut face (z = 0) faces the viewer.
+   ------------------------------------------------------------------ */
+const eye = new THREE.Group(); eye.position.set(0, EYE_Y, 0); eye.scale.setScalar(S); scene.add(eye);
+const parts = {};
+for (const k of ['sclera', 'cornea', 'iris', 'lens', 'ciliary', 'retina']) { parts[k] = new THREE.Group(); eye.add(parts[k]); }
+
+const arc = (ac, R, t0, t1, n) => { const o = []; for (let i = 0; i <= n; i++) { const t = t0 + (t1 - t0) * i / n; o.push([ac - R * Math.cos(t), R * Math.sin(t)]); } return o; };
+function dedupe(p) { const o = []; for (const q of p) { const l = o[o.length - 1]; if (!l || Math.hypot(l[0] - q[0], l[1] - q[1]) > 1e-4) o.push(q); } const f = o[0], l = o[o.length - 1]; if (Math.hypot(f[0] - l[0], f[1] - l[1]) < 1e-4) o.pop(); return o; }
+function lathe(prof, seg = 72) { const g = new THREE.LatheGeometry(prof.map(p => new THREE.Vector2(Math.max(p[1], 0), -p[0])), seg, Math.PI / 2, Math.PI); g.rotateZ(-Math.PI / 2); g.computeVertexNormals(); return g; }
+function shellSection(outer, inner) { // both lists run rim -> pole
+  const p = [...outer]; for (let i = outer.length - 1; i >= 0; i--) p.push([outer[i][0], -outer[i][1]]);
+  for (const q of inner) p.push([q[0], -q[1]]); for (let i = inner.length - 1; i >= 0; i--) p.push(inner[i]);
+  return dedupe(p);
+}
+function closedSection(P) { const p = [...P]; for (let i = P.length - 1; i >= 0; i--) p.push([P[i][0], -P[i][1]]); return dedupe(p); }
+function sectionGeo(pts, uvBox = false) {
+  const g = new THREE.ShapeGeometry(new THREE.Shape(pts.map(p => new THREE.Vector2(-p[0], p[1]))), 1);
+  if (uvBox) { g.computeBoundingBox(); const b = g.boundingBox, uv = g.attributes.uv, pos = g.attributes.position;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, (pos.getX(i) - b.min.x) / (b.max.x - b.min.x + 1e-6), (pos.getY(i) - b.min.y) / (b.max.y - b.min.y + 1e-6)); }
+  return g;
+}
+const halfRing = (a, r, n = 48) => { const o = []; for (let i = 0; i <= n; i++) { const f = Math.PI / 2 + Math.PI * i / n; o.push(new THREE.Vector3(-a, -r * Math.sin(f), r * Math.cos(f))); } return o; };
+const secPts3 = (pts, z = 0.06) => pts.map(p => new THREE.Vector3(-p[0], p[1], z));
+function mergeTwo(g1, g2, uvScale = 0) {
+  const m = new THREE.BufferGeometry();
+  m.setAttribute('position', new THREE.Float32BufferAttribute([...g1.attributes.position.array, ...g2.attributes.position.array], 3));
+  if (uvScale) m.setAttribute('uv', new THREE.Float32BufferAttribute([...g1.attributes.uv.array, ...g2.attributes.uv.array].map(v => v * uvScale), 2));
+  m.setIndex([...g1.index.array, ...Array.from(g2.index.array, i => i + g1.attributes.position.count)]); m.computeVertexNormals();
+  g1.dispose(); g2.dispose(); return m;
+}
+
+/* ---- materials ---- */
+const scleraTex = ctex(1024, 512, (g, w, h) => {
+  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#f3ece4'); gr.addColorStop(1, '#e6d8cc'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  const r = rnd(11); g.lineCap = 'round';
+  for (let v = 0; v < 26; v++) { let x = r() * w, y = h * 0.02, a = 0; g.strokeStyle = `rgba(${150 + r() * 40 | 0},${30 + r() * 20 | 0},${30 + r() * 20 | 0},${0.25 + r() * 0.35})`;
+    g.lineWidth = 1 + r() * 2.2; g.beginPath(); g.moveTo(x, y); for (let s = 0; s < 40; s++) { a += (r() - 0.5) * 0.7; x += Math.sin(a) * 6; y += 4 + r() * 5; g.lineTo(x, y); } g.stroke(); }
+});
+const fundusTex = ctex(1024, 512, (g, w, h) => {
+  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#c9593a'); gr.addColorStop(1, '#8e2c1c'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  const r = rnd(5); for (let v = 0; v < 18; v++) { let x = r() * w, y = h, a = 0; g.strokeStyle = `rgba(90,10,10,${0.35 + r() * 0.3})`; g.lineWidth = 2 + r() * 3; g.beginPath(); g.moveTo(x, y);
+    for (let s = 0; s < 50; s++) { a += (r() - 0.5) * 0.5; x += Math.sin(a) * 8; y -= 8; g.lineTo(x, y); } g.stroke(); }
+});
+const irisTex = ctex(1024, 64, (g, w, h) => {
+  g.fillStyle = '#4c6a78'; g.fillRect(0, 0, w, h); const r = rnd(9);
+  for (let i = 0; i < 900; i++) { const x = r() * w; g.fillStyle = `rgba(${r() < 0.5 ? '200,225,235' : '20,32,40'},${0.12 + r() * 0.3})`; g.fillRect(x, 0, 1 + r() * 2, h); }
+  g.fillStyle = 'rgba(120,80,40,.55)'; g.fillRect(0, 0, w, h * 0.25);
+});
+const lamTex = ctex(256, 256, (g, w, h) => {
+  g.fillStyle = '#103036'; g.fillRect(0, 0, w, h);
+  for (let i = 14; i > 0; i--) { const t = i / 14; g.fillStyle = `rgba(${170 + 60 * (1 - t) | 0},${220 + 20 * (1 - t) | 0},${210 - 60 * (1 - t) | 0},${0.1 + 0.06 * (1 - t)})`;
+    g.beginPath(); g.ellipse(w / 2, h / 2, w / 2 * t, h / 2 * t, 0, 0, Math.PI * 2); g.fill(); g.strokeStyle = 'rgba(200,255,250,.18)'; g.stroke(); }
+});
+const fibreTex = ctex(256, 256, (g, w, h) => { g.fillStyle = '#8d3526'; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(255,170,140,.35)'; g.lineWidth = 2; for (let i = -w; i < w * 2; i += 9) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + h * 0.6, h); g.stroke(); } });
+
+const M = {
+  sclera: new THREE.MeshPhysicalMaterial({ map: scleraTex, roughness: 0.36, clearcoat: 0.7, clearcoatRoughness: 0.2, side: THREE.DoubleSide, transparent: true }),
+  scleraSec: std({ color: 0xcfc1b3, roughness: 0.75, transparent: true }),
+  choroid: std({ color: 0x3b1812, roughness: 0.8, side: THREE.DoubleSide }),
+  retina: std({ map: fundusTex, roughness: 0.5, side: THREE.DoubleSide }),
+  retinaSec: std({ color: 0xd9806a, roughness: 0.6 }),
+  iris: std({ map: irisTex, roughness: 0.55, side: THREE.DoubleSide }),
+  irisSec: std({ color: 0x33241d, roughness: 0.7, side: THREE.DoubleSide }),
+  ciliary: std({ color: 0x8a3a2c, roughness: 0.55, side: THREE.DoubleSide, emissive: 0xff3a20, emissiveIntensity: 0 }),
+  ciliarySec: std({ map: fibreTex, roughness: 0.6, side: THREE.DoubleSide, emissive: 0xff3a20, emissiveIntensity: 0 }),
+  cornea: new THREE.MeshPhysicalMaterial({ color: 0xe6fbff, roughness: 0.04, clearcoat: 1, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false, envMapIntensity: 2 }),
+  corneaSec: std({ color: 0x9fe3ec, roughness: 0.2, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }),
+  lens: new THREE.MeshPhysicalMaterial({ color: 0xfff0c8, roughness: 0.08, clearcoat: 1, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false, envMapIntensity: 2 }),
+  lensSec: std({ map: lamTex, roughness: 0.2, transparent: true, opacity: 0.85, depthWrite: false, emissive: 0x0a3a40, emissiveIntensity: 0.6, side: THREE.DoubleSide }),
+  edge: new THREE.MeshBasicMaterial({ color: new THREE.Color(0.5, 2.8, 3.2) }),
+  halo: new THREE.MeshBasicMaterial({ color: new THREE.Color(0.08, 0.55, 0.62), transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }),
+  zonule: new THREE.LineBasicMaterial({ color: 0xdfe9e6, transparent: true, opacity: 0.55 })
+};
+M.scleraSec.side = THREE.DoubleSide; M.retinaSec.side = THREE.DoubleSide;
+function rimMat(color, k) {
+  return new THREE.ShaderMaterial({
+    uniforms: { uC: { value: new THREE.Color(color) }, uK: { value: k } },
+    vertexShader: `varying vec3 vN; varying vec3 vV; void main(){ vec4 mv = modelViewMatrix*vec4(position,1.0); vV=-mv.xyz; vN=normalMatrix*normal; gl_Position=projectionMatrix*mv; }`,
+    fragmentShader: `uniform vec3 uC; uniform float uK; varying vec3 vN; varying vec3 vV; void main(){ float f = pow(1.0-abs(dot(normalize(vN),normalize(vV))),2.5); gl_FragColor=vec4(uC*f*uK,1.0); }`,
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+  });
+}
+const tube = (pts, rad, closed) => new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, closed, 'centripetal'), Math.max(32, pts.length * 3), rad, 6, closed);
+function glowEdge(parent, pts, closed) {
+  const core = new THREE.Mesh(tube(pts, 0.1, closed), M.edge), halo = new THREE.Mesh(tube(pts, 0.32, closed), M.halo);
+  halo.renderOrder = 5; parent.add(core, halo); return [core, halo];
+}
+function setGeo(mesh, g) { if (mesh.geometry) mesh.geometry.dispose(); mesh.geometry = g; }
+
+
+/* ---- instrument in the same millimetre cradle the bench was built for ---- */
+let siltVeil = null, caRing = null;
+const barrelMat = std({ color: 0x14181c, metalness: 0.82, roughness: 0.32 });
+const brassMat = std({ color: 0xb08a45, metalness: 0.72, roughness: 0.34 });
+const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xe7f6ff, roughness: 0.04, transmission: 0.92, thickness: 0.4, transparent: true, opacity: 0.45, side: THREE.DoubleSide });
+function barrel(r, len, mat, parent) {
+  const g = new THREE.CylinderGeometry(r, r, len, 36, 1, true);
+  g.rotateZ(Math.PI / 2);
+  const m = new THREE.Mesh(g, mat); m.userData.noCoc = true; parent.add(m); return m;
+}
+barrel(11.2, 26, barrelMat, parts.sclera);
+barrel(11.6, 3.2, brassMat, parts.sclera).position.x = -12;
+barrel(11.6, 2.4, brassMat, parts.sclera).position.x = 12;
+const frontGlass = barrel(8.4, 3.2, glassMat, parts.cornea); frontGlass.position.x = 2;
+glowEdge(parts.cornea, halfRing(2, 8.6), false);
+const irisLeaf = new THREE.Mesh(new THREE.BoxGeometry(0.35, 7.2, 1.1), std({ color: 0x101214, metalness: 0.4, roughness: 0.45 }));
+for (let i = 0; i < 8; i++) {
+  const leaf = irisLeaf.clone();
+  leaf.position.y = Math.sin(i / 8 * Math.PI * 2) * 4.2;
+  leaf.position.z = Math.cos(i / 8 * Math.PI * 2) * 4.2;
+  leaf.lookAt(0, 0, 0); parts.iris.add(leaf);
+}
+const irisObj = { surf: parts.iris.children[0], sec: parts.iris.children[1] };
+const lensObj = { surf: barrel(6.2, 2.4, glassMat, parts.lens), rim: null, sec: null, edges: [], info: { h: 6, Ra: 18, Rp: 10, t: 4, aF: 3, aB: 7, aEq: 5 } };
+lensObj.surf.position.x = 1.2;
+lensObj.rim = lensObj.surf; lensObj.sec = lensObj.surf;
+function lensShape() { return lensObj.info; }
+function buildLens(s) {
+  const L = lensObj.info;
+  L.t = 3.1 + s * 1.6; L.h = 5.2 + (1 - s) * 1.4; L.Ra = 16 - s * 6; L.Rp = 9 - s * 2; L.aF = 3.2; L.aB = 3.2 + L.t; L.aEq = 4.2;
+  lensObj.surf.scale.x = 0.7 + s * 0.6;
+  return L;
+}
+function buildIris(pR) {
+  const open = Math.max(0.28, Math.min(1.35, 8 / Math.max(st.pupil, 1)));
+  parts.iris.scale.set(open, open, open);
+  return pR;
+}
+const cilObj = {
+  surf: new THREE.Mesh(new THREE.TorusGeometry(10.4, 0.55, 10, 28), brassMat),
+  sec: new THREE.Mesh(new THREE.TorusGeometry(9.2, 0.28, 8, 24), barrelMat),
+  zon: new THREE.LineSegments(new THREE.BufferGeometry(), M.zonule)
+};
+cilObj.surf.rotation.y = Math.PI / 2; cilObj.sec.rotation.y = Math.PI / 2;
+parts.ciliary.add(cilObj.surf, cilObj.sec); parts.lens.add(cilObj.zon);
+function buildCiliary(c) {
+  cilObj.surf.position.x = (c - 0.5) * 4;
+  return c;
+}
+const sensor = new THREE.Mesh(new THREE.PlaneGeometry(16, 12), std({ color: 0x101418, roughness: 0.4, metalness: 0.5 }));
+sensor.rotation.y = Math.PI / 2; sensor.position.x = -8; parts.retina.add(sensor);
+caRing = new THREE.Mesh(new THREE.TorusGeometry(5.5, 0.18, 8, 32), new THREE.MeshBasicMaterial({ color: 0xff48c8, transparent: true, opacity: 0.85 }));
+caRing.rotation.y = Math.PI / 2; caRing.position.x = -7.2; caRing.visible = false; parts.retina.add(caRing);
+buildLens(0); buildIris(2); buildCiliary(0);
+
+
+/* log-scaled diorama. True distances live on the presets; the bench only has room for a schematic. */
+const dioGroup = new THREE.Group(); scene.add(dioGroup);
+const X_BOOK = Xof(PRESETS[0].view), X_WIN = Xof(PRESETS[1].view), X_TREE = Xof(PRESETS[2].view), X_BACK = 4.55;
+const BOARD_Y = 1.18, deskTop = 1.33;
+const WIN = { y0: 1.25, y1: 1.9, z: 0.35 };
+const TREE = { x: X_TREE, base: BOARD_Y, cy: 1.7 };
+{
+  const board = shadow(new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.05, 1.3), std({ color: 0x2a241c, roughness: 0.7 })));
+  board.position.set(2.5, BOARD_Y, 0); dioGroup.add(board);
+}
+
+  function disc(tex, x, y, z, sc) {
+    const m = new THREE.Mesh(new THREE.CircleGeometry(0.22 * sc, 32), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.55, side: THREE.DoubleSide }));
+    m.position.set(x, y, z); m.rotation.y = Math.PI / 2; dioGroup.add(m); return m;
+  }
+  const algaeTex = ctex(256, 256, (g, w, h) => {
+    g.fillStyle = '#d5efe0'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#1f8a4d'; g.lineWidth = 3;
+    for (let i = 0; i < 18; i++) { g.beginPath(); g.ellipse(40 + (i%6)*32, 40 + ((i/6)|0)*70, 18, 8, i, 0, Math.PI*2); g.stroke(); }
+  });
+  const fleaTex = ctex(256, 256, (g, w, h) => {
+    g.fillStyle = '#e7f2f6'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#c4552a'; g.beginPath(); g.ellipse(128, 140, 70, 36, -0.4, 0, Math.PI*2); g.fill();
+    g.strokeStyle = '#7a2e16'; g.lineWidth = 4;
+    for (const x of [70, 110, 160]) { g.beginPath(); g.moveTo(x, 150); g.lineTo(x - 20, 210); g.stroke(); }
+    g.fillStyle = '#1a1a1a'; g.beginPath(); g.arc(168, 120, 6, 0, Math.PI*2); g.fill();
+  });
+  const siltTex = ctex(256, 256, (g, w, h) => {
+    g.fillStyle = '#efe6d4'; g.fillRect(0, 0, w, h);
+    const r = rnd(4);
+    for (let i = 0; i < 80; i++) { g.fillStyle = `rgba(40,32,20,${0.35+r()*0.5})`; g.beginPath(); g.arc(r()*w, r()*h, 2+r()*7, 0, Math.PI*2); g.fill(); }
+  });
+  disc(algaeTex, X_BOOK, 1.42, 0, 1);
+  disc(fleaTex, X_WIN, 1.42, 0.05, 1.15);
+  disc(siltTex, X_TREE, 1.42, 0, 1.3);
+  siltVeil = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.5), new THREE.MeshBasicMaterial({ color: 0xf4f1ea, transparent: true, opacity: 0.78, depthWrite: false }));
+  siltVeil.position.set(X_TREE - 0.04, 1.42, 0); siltVeil.rotation.y = Math.PI / 2; dioGroup.add(siltVeil);
+  const day = new THREE.DirectionalLight(0xfff4e4, 2.4); day.position.set(-2, 4, 2); scene.add(day);
+
+dio(dioGroup);
+
+/* corrective lens on its own rider/* corrective lens on its own rider, 12 mm vertex distance at model scale (0.34 m) */
+const specs = new THREE.Group(); specs.position.set(0.34, 0, 0); scene.add(specs);
+const specLens = new THREE.Mesh(undefined, new THREE.MeshPhysicalMaterial({ color: 0xeafcff, roughness: 0.03, clearcoat: 1, transparent: true, opacity: 0.22, depthWrite: false, envMapIntensity: 3, side: THREE.DoubleSide }));
+const specRim = new THREE.Mesh(undefined, rimMat(0x62e6f2, 1.8));
+const specRing = shadow(new THREE.Mesh(new THREE.TorusGeometry(0.135, 0.009, 12, 64), alu)); specRing.rotation.y = Math.PI / 2;
+const specHead = new THREE.Group(); specHead.position.y = EYE_Y; specHead.add(specLens, specRim, specRing); specs.add(specHead);
+noCoc(specLens); noCoc(specRim);
+{ const p = shadow(new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, EYE_Y - 0.135 - 1.03, 12), alu)); p.position.y = (EYE_Y - 0.135 + 1.03) / 2; specs.add(p);
+  const rd = shadow(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 0.24), alu)); rd.position.y = 1.025; specs.add(rd); }
+function buildSpecs(power) {
+  const R = 0.13, n = 24, prof = [], c = power < 0 ? 0.006 : power > 0 ? 0.004 + 0.0045 * power : 0.008, ed = power < 0 ? 0.006 - 0.004 * power : power > 0 ? 0.004 : 0.008;
+  for (let i = 0; i <= n; i++) { const r = R * i / n; const t = lerp(c, ed, (r / R) ** 2); prof.push(new THREE.Vector2(r, t / 2)); }
+  for (let i = n; i >= 0; i--) { const r = R * i / n; const t = lerp(c, ed, (r / R) ** 2); prof.push(new THREE.Vector2(r, -t / 2)); }
+  const g = new THREE.LatheGeometry(prof, 64); g.rotateZ(-Math.PI / 2); g.computeVertexNormals();
+  setGeo(specLens, g); specRim.geometry = g;
+}
+
+/* ------------------------------- lights ------------------------------- */
+scene.add(new THREE.HemisphereLight(0xfff4e8, 0xc8b89a, 0.85));
+function spot(color, I, pos, tgt, angle, pen, cast) {
+  const s = new THREE.SpotLight(color, I, 0, angle, pen, 2); s.position.set(...pos); s.target.position.set(...tgt);
+  if (cast) { s.castShadow = true; s.shadow.mapSize.set(1024, 1024); s.shadow.bias = -0.0004; s.shadow.normalBias = 0.02; }
+  scene.add(s, s.target); return s;
+}
+spot(0xfff2e6, 32, [-1.5, 3.4, 2.5], [-0.3, 1.45, 0], 0.4, 0.75, true);        // key light on the eye
+spot(0xfff0dc, 34, [1.7, 3.7, 1.9], [2.1, 1.3, 0], 0.62, 0.8, true);           // diorama light
+{
+  const sun = new THREE.DirectionalLight(0xffd6a0, 1.3); sun.position.set(7, 3.8, 2.2); sun.target.position.set(3.3, 1.3, 0);
+  sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, { left: -1.6, right: 1.6, top: 1.2, bottom: -1.2, near: 1, far: 12 });
+  sun.shadow.bias = -0.0006; scene.add(sun, sun.target);
+  const rim = new THREE.PointLight(0x62e6f2, 2.2, 3, 2); rim.position.set(-0.75, 1.95, -0.65); scene.add(rim);
+}
+
+/* ------------------------- framed plates on the back wall ------------------------- */
+const INK = '#2b2520', RED = '#9b2f1f', PAPER = '#eee6d3';
+function plateBase(g, w, h, title, sub) {
+  g.fillStyle = PAPER; g.fillRect(0, 0, w, h);
+  speckle(g, w, h, 5000, 41, (g, r, x, y) => { g.fillStyle = `rgba(120,95,60,${r() * 0.06})`; g.fillRect(x, y, 2, 2); });
+  g.strokeStyle = INK; g.lineWidth = 3; g.strokeRect(34, 34, w - 68, h - 68); g.lineWidth = 1; g.strokeRect(44, 44, w - 88, h - 88);
+  g.fillStyle = INK; g.textAlign = 'center'; g.font = '700 40px Georgia, serif'; g.fillText(title, w / 2, 100);
+  g.font = 'italic 24px Georgia, serif'; g.fillStyle = RED; g.fillText(sub, w / 2, 134); g.textAlign = 'left';
+}
+function label(g, txt, x, y, tx, ty, al = 'left') {
+  g.strokeStyle = INK; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, y); g.lineTo(tx, ty); g.stroke();
+  g.fillStyle = INK; g.font = '22px Georgia, serif'; g.textAlign = al; g.fillText(txt, tx + (al === 'left' ? 6 : -6), ty + 7); g.textAlign = 'left';
+}
+function eyeSketch(g, cx, cy, R, lensK = 0, withLabels = false) {
+  const x0 = cx - R * 1.2, x1 = cx + R * 1.05, mid = (x0 + x1) / 2;
+  const y0 = cy - R * 0.38, y1 = cy + R * 0.38;
+  g.strokeStyle = INK; g.lineWidth = 3; g.strokeRect(x0, y0, x1 - x0, y1 - y0);
+  g.lineWidth = 2; g.beginPath(); g.arc(x1 - R * 0.02, cy, R * 0.34, -1.2, 1.2); g.stroke();
+  const gap = Math.max(R * 0.05, R * (0.26 - 0.12 * lensK));
+  g.lineWidth = 5; g.beginPath();
+  g.moveTo(mid, y0); g.lineTo(mid, cy - gap);
+  g.moveTo(mid, y1); g.lineTo(mid, cy + gap); g.stroke();
+  g.lineWidth = 2; g.beginPath();
+  g.ellipse(mid - R * 0.35, cy, R * (0.08 + 0.05 * lensK), R * 0.26, 0, 0, Math.PI * 2); g.stroke();
+  g.strokeStyle = RED; g.lineWidth = 3;
+  g.beginPath(); g.moveTo(x0 + 10, y0 + 8); g.lineTo(x0 + 10, y1 - 8); g.stroke();
+  if (withLabels) {
+    label(g, 'eyepiece', x1 - 4, cy - R * 0.1, x1 + R * 0.15, cy - R * 0.72);
+    label(g, 'tube', mid, cy - gap, mid + R * 0.45, cy - R * 0.95);
+    label(g, 'objective', mid - R * 0.35, cy, mid + R * 0.5, cy + R * 0.15);
+    label(g, 'stage', x0 + R * 0.2, y1, x0 - R * 0.02, y1 + R * 0.38, 'right');
+    label(g, 'mirror', x0 + 10, cy, x0 - R * 0.02, cy - R * 0.48, 'right');
+  }
+}
+const PLATES = {
+  section: (g, w, h) => { plateBase(g, w, h, 'Compound Tube', 'DIN 160 mm tube · 10× eyepiece');
+    eyeSketch(g, w / 2 - 20, h / 2 + 50, 200, 0, true); },
+  accom: (g, w, h) => { plateBase(g, w, h, 'Working Distance', '4× ~ 18 mm · 10× ~ 6.5 mm · 40× ~ 0.6 mm');
+    for (const [i, k] of [[0, 0], [1, 1]]) { const cx = w * (0.3 + 0.42 * i), cy = h / 2 + 40; eyeSketch(g, cx, cy, 110, k);
+      g.strokeStyle = RED; g.lineWidth = 1.6; for (const s of [-1, 1]) { g.beginPath();
+        if (k === 0) { g.moveTo(cx + 260, cy + s * 26); g.lineTo(cx + 30, cy + s * 16); g.lineTo(cx - 88, cy); }
+        else { g.moveTo(cx + 170, cy); g.lineTo(cx + 30, cy + s * 20); g.lineTo(cx - 64, cy + s * 6); }
+        g.stroke(); }
+      g.fillStyle = INK; g.font = '24px Georgia, serif'; g.textAlign = 'center'; g.fillText(k ? '40×: field is about 1.3 µm' : '4×: field is about 56 µm', cx, cy + 170); g.textAlign = 'left'; }
+    g.font = '22px Georgia, serif'; g.fillStyle = INK; g.fillText('Abbe d = 0.61 λ / NA · 3.36 µm · 1.34 µm · 0.52 µm', 90, h - 70); },
+  invert: (g, w, h) => { plateBase(g, w, h, 'Inverted Image', 'a compound microscope flips the specimen');
+    const tx = 200, ty = h / 2 + 80, ex = w - 340, ey = h / 2 + 30;
+    g.fillStyle = '#4b3a2a'; g.fillRect(tx - 10, ty - 20, 20, 90);
+    g.fillStyle = '#c4552a'; g.beginPath(); g.arc(tx, ty - 90, 46, 0, Math.PI * 2); g.fill();
+    eyeSketch(g, ex, ey, 120, 0);
+    g.strokeStyle = RED; g.lineWidth = 1.8;
+    g.beginPath(); g.moveTo(tx, ty - 140); g.lineTo(ex + 70, ey); g.lineTo(ex - 120, ey + 40); g.stroke();
+    g.beginPath(); g.moveTo(tx, ty + 50); g.lineTo(ex + 70, ey); g.lineTo(ex - 120, ey - 36); g.stroke();
+    g.fillStyle = INK; g.font = '22px Georgia, serif'; g.fillText('algae at the top of the field lands low', ex - 240, ey + 180); },
+  errors: (g, w, h) => { plateBase(g, w, h, 'Dirty Objective', 'silt at 400 µm is veiled until the front lens is cleaned');
+    const rows = [["4× / 0.10", 0], ["10× / 0.25", 0], ["40× / 0.65 dirty", 1]];
+    rows.forEach(([name, k], i) => {
+      const cy = 240 + i * 170, cx = 620;
+      eyeSketch(g, cx, cy, 72, k > 0 ? 1 : 0);
+      g.strokeStyle = RED; g.lineWidth = 1.5;
+      const fx = cx - 78 + k * 34;
+      for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx + 200, cy + s * 16); g.lineTo(cx + 16, cy + s * 8); g.lineTo(fx, cy); g.stroke(); }
+      g.fillStyle = INK; g.font = '22px Georgia, serif'; g.fillText(name, 70, cy + 8);
+    }); },
+  snellen: (g, w, h) => { g.fillStyle = PAPER; g.fillRect(0, 0, w, h); g.fillStyle = INK; g.textAlign = 'center';
+    const rows = [['E', 150], ['F P', 96], ['T O Z', 68], ['L P E D', 50], ['P E C F D', 38], ['E D F C Z P', 29], ['F E L O P Z D', 22]];
+    const marks = ["400 µm", "80 µm", "20 µm", "8 µm", "3 µm", "1.3 µm", "0.5 µm"];
+    let y = 170; rows.forEach(([t, s], i) => { g.font = `700 ${s}px Georgia, serif`; g.fillText(t, w / 2, y); g.font = '14px Georgia, serif'; g.fillText(marks[i], w - 80, y); y += s + 34; });
+    g.textAlign = 'left'; g.font = 'italic 18px Georgia, serif'; g.fillText('specimen scale · silt sits at 400 µm', 60, h - 50); }
+};
+
+{
+  const frameMat = std({ color: 0x1a120c, roughness: 0.45, metalness: 0.1 });
+  const list = [['snellen', -2.15, 0.56, 0.82], ['section', -0.75, 1.1, 0.78], ['accom', 0.85, 1.1, 0.78], ['invert', 2.45, 1.1, 0.78], ['errors', 4.05, 1.1, 0.78]];
+  for (const [kind, x, w, h] of list) {
+    const tex = ctex(kind === 'snellen' ? 560 : 1100, kind === 'snellen' ? 820 : 780, PLATES[kind]);
+    const art = new THREE.Mesh(new THREE.PlaneGeometry(w, h), std({ map: tex, roughness: 0.85 })); art.position.set(x, 2.3, -3.17); scene.add(art);
+    const b = 0.05, d = 0.05;
+    for (const [sx, sy, px, py] of [[w + 2 * b, b, 0, h / 2 + b / 2], [w + 2 * b, b, 0, -h / 2 - b / 2], [b, h, -w / 2 - b / 2, 0], [b, h, w / 2 + b / 2, 0]]) {
+      const m = shadow(new THREE.Mesh(new THREE.BoxGeometry(sx, sy, d), frameMat)); m.position.set(x + px, 2.3 + py, -3.175 + d / 2 - 0.01); scene.add(m); }
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.05, transparent: true, opacity: 0.06, envMapIntensity: 2, depthWrite: false }));
+    glass.position.set(x, 2.3, -3.15); scene.add(noCoc(glass));
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, w * 0.6, 12), std({ color: 0xb08d57, metalness: 0.9, roughness: 0.3 })); bar.rotation.z = Math.PI / 2; bar.position.set(x, 2.3 + h / 2 + 0.14, -3.05); scene.add(bar);
+    const glow = new THREE.Mesh(new THREE.BoxGeometry(w * 0.55, 0.006, 0.01), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 2.5, 1.8) })); glow.position.set(x, 2.3 + h / 2 + 0.128, -3.042); scene.add(glow);
+    spot(0xffe2c0, 1.6, [x, 2.3 + h / 2 + 0.35, -2.55], [x, 2.2, -3.2], 0.62, 0.7, false);
+  }
+}
+
+/* ------------------------------------------------------------------
+   Render pipeline.
+   1 colour pass (HDR + depth texture)
+   2 blur-size pass: diorama meshes write their blur circle from their DIOPTRIC distance
+     to the eye's plane of focus; lab meshes write 0 (sharp); glass is hidden
+   3 gather blur, which also writes the scene depth back
+   4 overlay (plane of focus, rays) depth-tested against the scene, so it stays sharp
+   5 bloom, then tone map + grain to the screen
+   ------------------------------------------------------------------ */
+const retinaCam = new THREE.PerspectiveCamera(28, 4 / 3, 0.04, 30);
+retinaCam.position.copy(W(OPT.aNodal)); retinaCam.lookAt(retinaCam.position.clone().add(new THREE.Vector3(1, 0, 0)));
+retinaCam.updateMatrixWorld(); retinaCam.updateProjectionMatrix();
+const RET_W = 400, RET_H = 300;
+
+function makeRT(w, h, depthTex) {
+  const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, depthBuffer: true });
+  if (depthTex) { rt.depthTexture = new THREE.DepthTexture(w, h); rt.depthTexture.type = THREE.UnsignedIntType; }
+  return rt;
+}
+const RT = { col: makeRT(4, 4, true), coc: makeRT(4, 4), out: makeRT(4, 4), rcol: makeRT(RET_W, RET_H, true), rcoc: makeRT(RET_W, RET_H), rout: makeRT(RET_W, RET_H) };
+
+const cocVS = `varying vec3 vW; void main(){ vec4 p = vec4(position,1.0);
+  #ifdef USE_INSTANCING
+  p = instanceMatrix * p;
+  #endif
+  vec4 w = modelMatrix * p; vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`;
+const cocU = { uEyeX: { value: 0 }, uF: { value: 0 }, uP: { value: 0.004 }, uTol: { value: OPT.tol }, uScale: { value: 900 } };
+const cocDio = new THREE.ShaderMaterial({ uniforms: cocU, vertexShader: cocVS,
+  fragmentShader: `uniform float uEyeX,uF,uP,uTol,uScale; varying vec3 vW;
+  void main(){ float xo = max(vW.x - uEyeX, 0.05); float d = 0.1*pow(10.0,(xo-0.24)/1.46);
+    float beta = uP*abs(1.0/d - uF); float b = max(beta-uTol,0.0);
+    gl_FragColor = vec4(b*uScale,0.0,0.0,1.0); }` });
+const cocZero = new THREE.ShaderMaterial({ vertexShader: cocVS, fragmentShader: `void main(){ gl_FragColor = vec4(0.0,0.0,0.0,1.0); }` });
+
+const dofMat = new THREE.ShaderMaterial({
+  uniforms: { tColor: { value: null }, tCoc: { value: null }, tDepth: { value: null }, uTexel: { value: new THREE.Vector2() }, uMax: { value: 26 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }`,
+  fragmentShader: `uniform sampler2D tColor,tCoc,tDepth; uniform vec2 uTexel; uniform float uMax; varying vec2 vUv;
+  void main(){
+    vec3 acc = texture2D(tColor,vUv).rgb; float ws = 1.0;
+    float c0 = min(texture2D(tCoc,vUv).r, uMax);
+    if (c0 > 0.6) {
+      for (int i=1;i<72;i++){ float fi=float(i); float r = sqrt(fi/72.0)*c0; float th = fi*2.39996323;
+        vec2 uv = vUv + vec2(cos(th),sin(th))*r*uTexel;
+        float cs = min(texture2D(tCoc,uv).r, uMax);
+        float w = smoothstep(r-1.5, r+0.5, cs);
+        acc += texture2D(tColor,uv).rgb*w; ws += w; }
+    }
+    gl_FragColor = vec4(acc/ws,1.0);
+    gl_FragDepth = texture2D(tDepth,vUv).r;
+  }`, depthTest: true, depthWrite: true });
+const finalMat = new THREE.ShaderMaterial({
+  uniforms: { tIn: { value: null }, uFlip: { value: 0 }, uExp: { value: 1.0 }, uVig: { value: 0.35 }, uTime: { value: 0 }, uGrain: { value: 0.025 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }`,
+  fragmentShader: `uniform sampler2D tIn; uniform float uFlip,uExp,uVig,uTime,uGrain; varying vec2 vUv;
+  vec3 aces(vec3 x){ return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0); }
+  vec3 srgb(vec3 c){ return mix(c*12.92, 1.055*pow(c,vec3(1.0/2.4))-0.055, step(vec3(0.0031308),c)); }
+  float h(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
+  void main(){ vec2 uv = uFlip>0.5 ? 1.0-vUv : vUv;
+    vec3 c = aces(texture2D(tIn,uv).rgb*uExp);
+    vec2 q = vUv-0.5; c *= 1.0 - uVig*dot(q,q)*2.2;
+    c = srgb(c) + (h(vUv*vec2(1731.0,977.0)+uTime)-0.5)*uGrain;
+    gl_FragColor = vec4(c,1.0); }`, depthTest: false, depthWrite: false });
+const fsDof = new FullScreenQuad(dofMat), fsFinal = new FullScreenQuad(finalMat);
+const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.38, 0.5, 1.0);
+
+/* mesh lists for the blur-size pass */
+let cocMeshes = [];
+function collectCoc() { cocMeshes = []; scene.traverse(o => { if (o.isMesh || o.isLine || o.isPoints) cocMeshes.push(o); }); }
+function renderCoc(cam, target, scalePx) {
+  cocU.uScale.value = scalePx;
+  const saved = [];
+  for (const o of cocMeshes) {
+    saved.push([o, o.material, o.visible]);
+    if (!o.visible) continue;
+    if (!o.isMesh || o.userData.noCoc) o.visible = false;
+    else o.material = o.userData.dio ? cocDio : cocZero;
+  }
+  const bg = scene.background, fog = scene.fog; scene.background = null; scene.fog = null;
+  renderer.setClearColor(0x000000, 1); renderer.setRenderTarget(target); renderer.clear(); renderer.render(scene, cam);
+  scene.background = bg; scene.fog = fog;
+  for (const [o, m, v] of saved) { o.material = m; o.visible = v; }
+}
+function renderDOF(cam, rtCol, rtCoc, rtOut, scalePx, overlayScene) {
+  renderer.setRenderTarget(rtCol); renderer.render(scene, cam);
+  renderCoc(cam, rtCoc, scalePx);
+  dofMat.uniforms.tColor.value = rtCol.texture; dofMat.uniforms.tCoc.value = rtCoc.texture; dofMat.uniforms.tDepth.value = rtCol.depthTexture;
+  dofMat.uniforms.uTexel.value.set(1 / rtCol.width, 1 / rtCol.height);
+  renderer.setRenderTarget(rtOut); renderer.clear(); fsDof.render(renderer);
+  if (overlayScene) { const ac = renderer.autoClear; renderer.autoClear = false; renderer.render(overlayScene, cam); renderer.autoClear = ac; }
+}
+
+/* ---- the image painted on the flat field stop (projected through the nodal point) ---- */
+const retinaPatch = (() => {
+  const g = new THREE.PlaneGeometry(9.6, 6.4, 32, 20);
+  g.rotateY(-Math.PI / 2); g.translate(-7.2, 0, 0);
+  const pos = g.attributes.position, uv = g.attributes.uv;
+  const N = W(OPT.aNodal), P = new THREE.Vector3(), Q = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    P.set(pos.getX(i) * S, EYE_Y + pos.getY(i) * S, pos.getZ(i) * S);
+    Q.copy(N).addScaledVector(N.clone().sub(P).normalize(), 5).project(retinaCam);
+    uv.setXY(i, Q.x * 0.5 + 0.5, Q.y * 0.5 + 0.5);
+  }
+  const m = new THREE.Mesh(g, new THREE.ShaderMaterial({
+    uniforms: { map: { value: RT.rout.texture }, uGain: { value: 1.25 } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader: `uniform sampler2D map; uniform float uGain; varying vec2 vUv;
+      void main(){ if(vUv.x<0.0||vUv.x>1.0||vUv.y<0.0||vUv.y>1.0) discard;
+        vec2 e = min(vUv,1.0-vUv); float f = smoothstep(0.0,0.06,min(e.x,e.y));
+        gl_FragColor = vec4(texture2D(map,vUv).rgb*uGain*f + vec3(0.05,0.01,0.0)*(1.0-f), 1.0); }`,
+    side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
+  }));
+  parts.retina.add(m); return m;
+})();
+
+/* ------------------------------ overlay ------------------------------ */
+const overlay = new THREE.Scene();
+const PLANE_H = 0.92, PLANE_W = 1.28, PLANE_Y = 1.64;
+const planeMat = new THREE.ShaderMaterial({
+  uniforms: { uC: { value: new THREE.Color(0.35, 1.9, 2.1) }, uA: { value: 1 }, uT: { value: 0 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader: `uniform vec3 uC; uniform float uA,uT; varying vec2 vUv;
+    void main(){ vec2 g = abs(fract(vUv*vec2(14.0,10.0))-0.5); float line = smoothstep(0.46,0.5,max(g.x,g.y));
+      vec2 e = min(vUv,1.0-vUv); float m = min(e.x,e.y); float edge = smoothstep(0.012,0.0,m) + 0.35*smoothstep(0.06,0.0,m);
+      float scan = smoothstep(0.02,0.0,abs(fract(vUv.y*0.5 - uT*0.12)-0.5));
+      float a = 0.035 + line*0.10 + edge*0.9 + scan*0.10;
+      gl_FragColor = vec4(uC*(0.5+1.2*edge+0.6*scan), a*uA); }`,
+  transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending
+});
+const focusPlane = new THREE.Mesh(new THREE.PlaneGeometry(PLANE_W, PLANE_H).rotateY(Math.PI / 2), planeMat);
+focusPlane.position.set(1, PLANE_Y, 0); overlay.add(focusPlane);
+const slabMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.1, 0.5, 0.56), transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+const slab = new THREE.Mesh(new THREE.BoxGeometry(1, PLANE_H, PLANE_W), slabMat); overlay.add(slab);
+const slabEdges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, PLANE_H, PLANE_W)), new THREE.LineBasicMaterial({ color: 0x62e6f2, transparent: true, opacity: 0.45 }));
+overlay.add(slabEdges);
+const rayGroup = new THREE.Group(); overlay.add(rayGroup);
+const rayMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.3, 2.6, 2.8), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+const rayFaint = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.3, 0.8, 0.9), transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
+const chiefMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 1.8, 0.5), transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
+const blurRingMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.0, 1.2, 0.8), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+function segTube(a, b, r, m) { const g = new THREE.TubeGeometry(new THREE.LineCurve3(a, b), 1, r, 5, false); const t = new THREE.Mesh(g, m); rayGroup.add(t); return t; }
+function clearRays() { for (const c of [...rayGroup.children]) { c.geometry.dispose(); rayGroup.remove(c); } }
+
+// target points in the diorama: centre, top, bottom (as seen from the eye)
+const TGT = [
+  { c: new THREE.Vector3(X_BOOK, deskTop + 0.075, 0), top: new THREE.Vector3(X_BOOK + 0.045, deskTop + 0.145, 0), bot: new THREE.Vector3(X_BOOK - 0.0, deskTop + 0.01, 0) },
+  { c: new THREE.Vector3(X_WIN, 1.55, 0), top: new THREE.Vector3(X_WIN, WIN.y1, 0.0), bot: new THREE.Vector3(X_WIN, WIN.y0, 0) },
+  { c: new THREE.Vector3(X_TREE, 1.66, 0), top: new THREE.Vector3(X_TREE, 1.8, 0), bot: new THREE.Vector3(X_TREE, 1.41, 0) }
+];
+function retinaHit(from) { // continue the chief ray from `from` through the nodal point to the retina sphere
+  const N = W(OPT.aNodal), C = W(12.5), R = 10.45 * S, d = N.clone().sub(from).normalize();
+  const oc = N.clone().sub(C), b = oc.dot(d), c = oc.lengthSq() - R * R, t = -b + Math.sqrt(Math.max(b * b - c, 0));
+  return N.clone().addScaledVector(d, t);
+}
+
+/* ------------------------------------------------------------------
+   State -> optics -> scene
+   ------------------------------------------------------------------ */
+const FOCUS_RANGE = [0.30, 3.5];
+const OBJ = { 4: { na: 0.10, wd: 18 }, 10: { na: 0.25, wd: 6.5 }, 40: { na: 0.65, wd: 0.6 } };
+function optics() {
+  const mag = st.pupil, spec = OBJ[mag] || OBJ[10], C = COND[st.cond];
+  const NA = spec.na * C.na, M = mag * 10, lam = 0.55, eDet = 2;
+  const dRes = 0.61 * lam / NA;
+  const dof = lam / (NA * NA) + eDet / (M * NA);
+  const focusM = Math.exp(Math.log(FOCUS_RANGE[1]) + (Math.log(FOCUS_RANGE[0]) - Math.log(FOCUS_RANGE[1])) * st.tension);
+  return { C, A: dof, Cc: st.corr ? 0 : 1, F: 1 / focusM, s: st.tension, p: 0.006 + NA * 0.05, N: mag, NA, M, dRes, dof, focusM, wd: spec.wd, travel: (st.tension - 0.5) * 3 };
+}
+const OFF = { cornea: 14, iris: 9, lens: 4, ciliary: -1, retina: -7, sclera: -7 };
+let geoKey = '', rayKey = '', specKey = '', uiKey = '';
+const planeInfo = { x: 1, ok: true, txt: '' };
+
+function updateEye(o) {
+  const k = o.s.toFixed(4) + '|' + st.pupilR.toFixed(3) + '|' + st.tension.toFixed(4);
+  if (k !== geoKey) {
+    geoKey = k;
+    const L = buildLens(o.s); buildIris(st.pupilR, L.aF); buildCiliary(st.tension, L);
+  }
+  M.ciliary.emissiveIntensity = M.ciliarySec.emissiveIntensity = st.tension * 0.35;
+  const e = st.explode;
+  for (const p in OFF) parts[p].position.x = OFF[p] * e;
+  if (o.travel) parts.ciliary.position.x += o.travel;
+  if (siltVeil) siltVeil.material.opacity = st.corr ? 0 : 0.78;
+  if (caRing) caRing.visible = !st.corr;
+  M.sclera.opacity = M.scleraSec.opacity = 1 - 0.86 * e;
+  M.sclera.depthWrite = e < 0.5;
+  cilObj.zon.visible = e < 0.05;
+  const sk = st.cond;
+  if (sk !== specKey) { specKey = sk; buildSpecs(COND[st.cond].corr); }
+  specs.position.y = -(1 - st.corrShow) * 0.55; specs.visible = st.corrShow > 0.01;
+}
+
+function updatePlane(o) {
+  const tolD = OPT.tol / o.p, far = dOfX(X_BACK), xmin = 0.3;
+  const toX = (v) => v <= 1 / far ? X_BACK : clamp(Xof(1 / v), xmin, X_BACK);
+  let ok = true;
+  if (o.F > 1 / far) { planeInfo.x = toX(o.F); planeInfo.txt = `${fmtD(1 / o.F)} · ${o.F.toFixed(2)} D`; }
+  else if (o.F > -0.01) { planeInfo.x = X_BACK; planeInfo.txt = `∞ · ${Math.max(o.F, 0).toFixed(2)} D`; }
+  else { planeInfo.x = X_BACK; planeInfo.txt = `none · past the focal plane (${o.F.toFixed(2)} D)`; ok = false; }
+  planeInfo.ok = ok;
+  focusPlane.position.x = planeInfo.x;
+  planeMat.uniforms.uC.value.setRGB(ok ? 0.35 : 2.4, ok ? 1.9 : 0.5, ok ? 2.1 : 0.35);
+  planeMat.uniforms.uA.value = ok ? 1 : 0.55;
+  const xN = o.F + tolD > 0 ? toX(o.F + tolD) : X_BACK, xF = o.F - tolD > 0 ? toX(o.F - tolD) : X_BACK;
+  const show = st.showPlane && ok;
+  slab.visible = slabEdges.visible = show && xF - xN > 0.002;
+  const len = Math.max(0.003, xF - xN);
+  slab.scale.x = slabEdges.scale.x = len; slab.position.set((xN + xF) / 2, PLANE_Y, 0); slabEdges.position.copy(slab.position);
+  focusPlane.visible = st.showPlane;
+  planeInfo.near = o.F + tolD > 0 ? 1 / (o.F + tolD) : Infinity; planeInfo.far = o.F - tolD > 0 ? 1 / (o.F - tolD) : Infinity; planeInfo.tolD = tolD;
+}
+
+const blurInfo = { aImg: OPT.aRet, ring: 0, top: null, bot: null };
+function updateRays(o) {
+  const k = [o.F.toFixed(4), st.pupil, st.preset, st.corr, st.explode > 0.02].join('|');
+  rayGroup.visible = st.explode < 0.05;
+  if (k === rayKey) return; rayKey = k; clearRays();
+  const T = TGT[st.preset], hp = Math.min(6, 40 / Math.max(st.pupil, 1));
+  for (const h of [-hp, 0, hp]) {
+    const a = new THREE.Vector3(T.c.x, T.c.y + h * 0.02, T.c.z);
+    const b = W(0, h * 0.15, 0.2);
+    segTube(a, b, 0.0018, h === 0 ? chiefMat : rayMat);
+  }
+  blurInfo.top = T.top.clone(); blurInfo.bot = T.bot.clone(); blurInfo.ring = 1;
+}
+
+/* ------------------------------ labels ------------------------------ */
+const labelsEl = $('#labels');
+function mkLabel(cls, html) { const d = document.createElement('div'); d.className = 'lab ' + cls; d.innerHTML = html; labelsEl.appendChild(d); return d; }
+const LB = {
+  plane: mkLabel('plane', ''),
+  dio: PRESETS.map((p, i) => mkLabel('', `<b>${i + 1}</b> ${p.name} · ${p.dist} · ${p.mark}`)),
+  parts: [['cornea', 'Eyepiece', 8, 7], ['iris', 'Objective', 0, 6], ['lens', 'Stage', -2, 4], ['ciliary', 'Mirror', -6, 9], ['retina', 'Slide', -8, 6]]
+    .map(([k, n, a, r]) => ({ k, a, r, el: mkLabel('part', `<b>${n}</b>`) })),
+  inv: mkLabel('part', '<b>top</b> of target → <b>lower</b> retina')
+};
+const _v = new THREE.Vector3();
+function place(el, p, show) {
+  if (!show) { el.style.display = 'none'; return; }
+  _v.copy(p).project(camera);
+  if (_v.z > 1 || Math.abs(_v.x) > 1.1 || Math.abs(_v.y) > 1.1) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.style.left = ((_v.x * 0.5 + 0.5) * labelsEl.clientWidth).toFixed(1) + 'px';
+  el.style.top = ((-_v.y * 0.5 + 0.5) * labelsEl.clientHeight - 10).toFixed(1) + 'px';
+}
+function updateLabels() {
+  LB.plane.className = 'lab plane' + (planeInfo.ok ? '' : ' bad');
+  LB.plane.innerHTML = `<b>PLANE OF FOCUS</b> ${planeInfo.txt}`;
+  place(LB.plane, new THREE.Vector3(focusPlane.position.x, PLANE_Y + PLANE_H / 2 + 0.02, 0), st.showPlane && st.cam !== 'eye');
+  const tops = [TGT[0].top.clone().setY(deskTop + 0.2), new THREE.Vector3(X_WIN, 1.93, -0.2), new THREE.Vector3(X_TREE, 2.03, 0.12)];
+  LB.dio.forEach((el, i) => place(el, tops[i], st.cam !== 'eye'));
+  const showParts = st.explode > 0.5 || st.cam === 'eye';
+  for (const L of LB.parts) place(L.el, eye.localToWorld(new THREE.Vector3(-L.a + parts[L.k].position.x, L.r, 0)), showParts);
+  place(LB.inv, blurInfo.bot ? blurInfo.top.clone().add(new THREE.Vector3(-0.02, -0.04, 0.02)) : _v, st.explode < 0.02 && !!blurInfo.top && st.cam === 'eye');
+}
+
+/* ------------------------------------------------------------------
+   Panels, readouts, notes
+   ------------------------------------------------------------------ */
+const NOTES = {
+  focus: `<h3>Fine focus</h3>
+    <p>DIN tube length <span class="v">160 mm</span>, eyepiece <span class="v">10×</span>. The knob runs the stage through the three planes in the drop: algae on the coverslip (<span class="v">0 µm</span>), a water flea <span class="v">80 µm</span> down, silt <span class="v">400 µm</span> down.</p>
+    <p>Only the 4× objective has a depth of field wide enough to approach the silt, and even then the silt is a separate plane you must focus.</p>`,
+  blur: `<h3>Resolution</h3>
+    <p>Abbe, <span class="v">d = 0.61 λ / NA</span>, <span class="v">λ = 550 nm</span>.</p>
+    <p>4× / 0.10 → <span class="v">3.36 µm</span>. 10× / 0.25 → <span class="v">1.34 µm</span>. 40× / 0.65 → <span class="v">0.52 µm</span>.</p>
+    <p>Depth of field <span class="v">≈ λ / NA² + e / (M NA)</span> with <span class="v">e = 2 µm</span> at the detector and <span class="v">M</span> the total magnification (objective × 10). 4× is about <span class="v">56 µm</span>, 10× about <span class="v">8.9 µm</span>, 40× about <span class="v">1.3 µm</span>.</p>`,
+  ciliary: `<h3>Working distance</h3>
+    <p>Typical dry objectives: 4× about <span class="v">18 mm</span>, 10× about <span class="v">6.5 mm</span>, 40× about <span class="v">0.6 mm</span>. The model shortens the gap as the stop changes. You will crash a 40× into the coverslip if you treat it like a 4×.</p>`,
+  pupil: `<h3>Empty magnification</h3>
+    <p>Useful magnification tops out near <span class="v">1000 × NA</span>. The 40× / 0.65 with a 10× eyepiece is <span class="v">400×</span>, under the <span class="v">650×</span> limit, so you are not yet magnifying empty blur.</p>
+    <p>Closing the condenser (the fourth condition) cuts effective NA and deepens the field, at the cost of resolution.</p>`,
+  invert: `<h3>The compound image</h3>
+    <p>A compound microscope inverts. The panel shows the image as it forms, upside down. I flips it for teaching and says so.</p>`,
+  cond: `<h3>Dirty front lens</h3>
+    <p>A film of silt on the objective throws veiling glare. Low-contrast grains deeper in the drop disappear first; the algae at the coverslip still read. Clean restores the silt. Exploded parts are the eyepiece, the objective, the stage, and the mirror.</p>
+    <p class="src">Abbe resolution and the DOF formula as given by Nikon MicroscopyU, λ = 550 nm.</p>`
+};
+function setNote(k) { $('#noteBody').innerHTML = NOTES[k]; document.querySelectorAll('#noteSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.n === k)); }
+
+const cvz = $('#ciliaryViz'), cz = cvz.getContext('2d');
+function drawCiliary() {
+  const w = cvz.width, h = cvz.height;
+  cz.clearRect(0, 0, w, h);
+  cz.fillStyle = '#061015'; cz.fillRect(0, 0, w, h);
+  cz.strokeStyle = '#62e6f2'; cz.lineWidth = 2;
+  cz.strokeRect(30, h/2 - 28, w - 60, 56);
+  const x = 40 + st.tension * (w - 80);
+  cz.fillStyle = '#ffb65c'; cz.fillRect(x - 3, h/2 - 36, 6, 72);
+  cz.fillStyle = '#8398a2'; cz.font = '20px IBM Plex Mono, monospace';
+  cz.fillText('focus travel', 16, 28);
+}
+
+const fmtFar = (m) => m === Infinity ? '∞' : fmtD(m);
+function updateUI(o) {
+  const pct = Math.round(st.tension * 100);
+  $('#tensionPct').textContent = (o.dof).toFixed(1) + ' µm DOF';
+  const cil = $('#ciliary'); cil.setAttribute('aria-valuenow', pct);
+  cil.querySelector('.fill').style.width = pct + '%'; cil.querySelector('.handle').style.left = pct + '%';
+  $('#rA').textContent = o.NA.toFixed(2) + ' NA';
+  $('#rT').textContent = o.dRes.toFixed(2) + ' µm';
+  $('#rR').textContent = o.wd.toFixed(1) + ' mm WD';
+  $('#pupilNum').textContent = o.N + '×';
+  $('#dofHint').innerHTML = `Abbe <b>${o.dRes.toFixed(2)} µm</b> · DOF <b>${o.dof.toFixed(1)} µm</b> · empty-mag limit <b>${Math.round(1000*o.NA)}×</b>`;
+  $('#condNum').textContent = o.M + '×';
+  $('#corrPower').textContent = st.corr ? 'clean' : 'dirty';
+  $('#condHint').innerHTML = `${o.C.label}<br>${st.corr ? 'Silt contrast restored' : 'Veiling glare hides the silt'}`;
+  const oF = $('#oFocus'); oF.textContent = PRESETS[st.preset].dist; oF.className = 'hi';
+  $('#oDof').textContent = o.dof.toFixed(1) + ' µm';
+  $('#oPow').textContent = o.N + '× / ' + o.NA.toFixed(2);
+  $('#oLens').textContent = 'tube 160 mm · eyepiece 10×';
+  const pr = PRESETS[st.preset];
+  const depth = [0, 80, 400][st.preset];
+  const focusUm = st.tension * 400;
+  const miss = Math.abs(focusUm - depth);
+  $('#oTgtL').textContent = pr.name;
+  $('#oTgt').textContent = pr.dist;
+  const veiled = pr.id === 'silt' && !st.corr;
+  const ob = $('#oBlur');
+  ob.textContent = veiled ? 'veiled by the dirty objective' : (miss <= o.dof ? 'in the depth of field' : miss.toFixed(0) + ' µm off the plane');
+  ob.className = (!veiled && miss <= o.dof) ? 'ok' : 'warn';
+  PRESETS.forEach((p, i) => {
+    const dep = [0, 80, 400][i], off = Math.abs(focusUm - dep) > o.dof || (p.id === 'silt' && !st.corr);
+    const b = frames[i].badge; b.textContent = off ? 'SOFT' : 'SHARP'; b.className = 'badge' + (off ? ' no' : '');
+    frames[i].el.setAttribute('aria-pressed', i === st.preset);
+  });
+}
+
+/* ------------------------------ controls ------------------------------ */
+const toastEl = $('#toast'); let toastT = 0;
+function toast(msg, info = false) { toastEl.textContent = msg; toastEl.className = 'show' + (info ? ' info' : ''); clearTimeout(toastT); toastT = setTimeout(() => toastEl.className = '', 4200); }
+const logEl = $('#log');
+function log(msg, cls = '') { const d = document.createElement('div'); d.className = cls; d.textContent = msg; logEl.appendChild(d); while (logEl.children.length > 60) logEl.firstChild.remove(); logEl.scrollTop = logEl.scrollHeight; }
+
+function setPreset(i, quiet) {
+  const p = PRESETS[i];
+  st.preset = i;
+  const t = (Math.log(Math.min(p.d, FOCUS_RANGE[1])) - Math.log(FOCUS_RANGE[1])) / (Math.log(FOCUS_RANGE[0]) - Math.log(FOCUS_RANGE[1]));
+  st.target = clamp(t, 0, 1);
+  if (!quiet) log(`> preset ${i + 1}: ${p.name} · ${p.dist}`, 'me');
+}
+function setPupil(p) {
+  st.pupil = p;
+  document.querySelectorAll('#pupilSeg button').forEach(b => b.setAttribute('aria-pressed', Math.abs(+b.dataset.p - p) < 0.05));
+  log('> stop ' + p, 'me');
+}
+function setCond(k) {
+  st.cond = k; document.querySelectorAll('#condSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.k === k));
+  log(`> condition: ${COND[k].label}`, 'me'); setPreset(st.preset, false);
+}
+function setCorr(on) { st.corr = on; $('#corrToggle').checked = on; log(`> corrective lens ${on ? 'on: ' + COND[st.cond].lens : 'off'}`, 'me'); setPreset(st.preset, false); }
+function setExploded(on) { st.exploded = on; document.querySelectorAll('#viewSeg button').forEach(b => b.setAttribute('aria-pressed', (b.dataset.v === '1') === on)); log(`> view: ${on ? 'exploded (eyepiece, objective, stage, mirror)' : 'assembled'}`, 'me'); }
+function setUpright(on) { st.upright = on; $('#retTag').textContent = on ? 'UPRIGHT · UPRIGHT · CORRECTED' : 'AS FORMED · INVERTED'; $('#retAxis').textContent = on ? 'sky ↑ · ground ↓' : 'sky ↓ · ground ↑'; $('#flipBtn').textContent = on ? 'Show as formed (I)' : 'Show upright (I)'; }
+function setTension(t) { st.tension = st.target = clamp(t, 0, 1); }
+
+$('#viewSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setExploded(b.dataset.v === '1'); });
+$('#camSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) goCam(b.dataset.c); });
+$('#pupilSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setPupil(+b.dataset.p); });
+$('#condSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setCond(b.dataset.k); });
+$('#noteSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setNote(b.dataset.n); });
+$('#corrToggle').addEventListener('change', e => setCorr(e.target.checked));
+$('#flipBtn').addEventListener('click', () => setUpright(!st.upright));
+const helpEl = $('#help');
+$('#helpBtn').addEventListener('click', () => { helpEl.hidden = !helpEl.hidden; });
+helpEl.addEventListener('click', () => { helpEl.hidden = true; });
+{ // ciliary drag control
+  const el = $('#ciliary'); let drag = false;
+  const at = (e) => { const r = el.querySelector('.track').getBoundingClientRect(); setTension((e.clientX - r.left) / r.width); };
+  el.addEventListener('pointerdown', e => { drag = true; el.setPointerCapture(e.pointerId); at(e); });
+  el.addEventListener('pointermove', e => { if (drag) at(e); });
+  el.addEventListener('pointerup', () => { if (drag) log(`> focus knob ${Math.round(st.tension * 100)}% · lens ${lensObj.info.t.toFixed(2)} mm`, 'me'); drag = false; });
+  el.addEventListener('keydown', e => { if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { setTension(st.tension + 0.04); e.preventDefault(); e.stopPropagation(); } if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { setTension(st.tension - 0.04); e.preventDefault(); e.stopPropagation(); } });
+}
+{ // drag the ciliary body in the 3D model
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(); let drag = null;
+  const hit = (e) => { const r = canvas.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, camera); return ray.intersectObjects([cilObj.surf, cilObj.sec], false).length > 0; };
+  canvas.addEventListener('pointerdown', e => { if (hit(e)) { drag = { y: e.clientY, t: st.tension }; controls.enabled = false; canvas.setPointerCapture(e.pointerId); } }, true);
+  canvas.addEventListener('pointermove', e => { if (drag) setTension(drag.t + (drag.y - e.clientY) / 160); else canvas.style.cursor = hit(e) ? 'ns-resize' : ''; });
+  canvas.addEventListener('pointerup', () => { if (drag) { log(`> focus dragged: ${Math.round(st.tension * 100)}%`, 'me'); drag = null; controls.enabled = true; } });
+}
+const frames = PRESETS.map((p, i) => {
+  const el = document.createElement('button'); el.className = 'frame'; el.setAttribute('aria-pressed', 'false'); el.setAttribute('aria-label', `Focus on the ${p.name}`);
+  el.innerHTML = `<canvas width="200" height="150"></canvas><span class="key"><kbd>${i + 1}</kbd></span><span class="badge">IN RANGE</span><span class="cap"><span>${p.name}</span><b>${p.dist} · ${p.mark}</b></span>`;
+  el.addEventListener('click', () => setPreset(i));
+  $('#film').appendChild(el);
+  return { el, cv: el.querySelector('canvas'), badge: el.querySelector('.badge') };
+});
+
+/* console commands */
+const cmdEl = $('#cmd');
+cmdEl.addEventListener('keydown', e => {
+  e.stopPropagation();
+  if (e.key === 'Escape') { cmdEl.blur(); return; }
+  if (e.key !== 'Enter') return;
+  const raw = cmdEl.value.trim(); cmdEl.value = ''; if (!raw) return;
+  log('› ' + raw, 'c');
+  const [c, a] = raw.toLowerCase().split(/\s+/);
+  if (c === 'help') log('focus <m|inf> · pupil 4|10|40 · cond normal|myopia|hyperopia|presbyopia · lens on|off · explode · assemble · preset 1-3 · cam bench|eye|diorama · flip · plane');
+  else if (c === 'focus') { const o = optics(), d = a === 'inf' ? Infinity : parseFloat(a); if (!(d > 0)) return log('  usage: focus 0.5  (metres) or focus inf', 'w');
+    const need = 1 / d - o.C.E - o.Cc; st.target = clamp(need / o.C.amp, 0, 1); log(`  needs ${need.toFixed(2)} D` + (need > o.C.amp || need < 0 ? ' · out of range' : ''), need > o.C.amp || need < 0 ? 'w' : ''); }
+  else if (c === 'pupil' && [4,10,40].some(n => Math.abs(n - +a) < 0.05)) setPupil(+a);
+  else if (c === 'cond' && COND[a]) setCond(a);
+  else if (c === 'lens') setCorr(a !== 'off');
+  else if (c === 'explode') setExploded(true);
+  else if (c === 'assemble') setExploded(false);
+  else if (c === 'preset' && +a >= 1 && +a <= 3) setPreset(+a - 1);
+  else if (c === 'cam') goCam(a === 'bench' ? 'overview' : a);
+  else if (c === 'flip') setUpright(!st.upright);
+  else if (c === 'plane') st.showPlane = !st.showPlane;
+  else log('  unknown command. Type help.', 'w');
+});
+const camOrder = ['overview', 'eye', 'diorama'];
+window.addEventListener('keydown', e => {
+  if (e.target === cmdEl || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key;
+  if (k === 'Escape') { helpEl.hidden = true; return; }
+  if (k === '?' || k === '/') { helpEl.hidden = !helpEl.hidden; return; }
+  if (k === '`') { e.preventDefault(); cmdEl.focus(); return; }
+  if (k === '1' || k === '2' || k === '3') return setPreset(+k - 1);
+  if (k === 'ArrowRight') { setTension(st.tension + 0.04); e.preventDefault(); return; }
+  if (k === 'ArrowLeft') { setTension(st.tension - 0.04); e.preventDefault(); return; }
+  const map = { q: () => setPupil(4), w: () => setPupil(10), e: () => setPupil(40), x: () => setExploded(!st.exploded), n: () => setCond('normal'), m: () => setCond('myopia'),
+    h: () => setCond('hyperopia'), p: () => setCond('presbyopia'), c: () => setCorr(!st.corr), i: () => setUpright(!st.upright),
+    f: () => { st.showPlane = !st.showPlane; log(`> plane of focus ${st.showPlane ? 'shown' : 'hidden'}`, 'me'); },
+    v: () => goCam(camOrder[(camOrder.indexOf(st.cam) + 1) % 3]), r: () => goCam('overview') };
+  const fn = map[k.toLowerCase()]; if (fn) fn();
+});
+
+/* ------------------------------------------------------------------
+   Frame loop
+   ------------------------------------------------------------------ */
+const retCtx = $('#retina').getContext('2d');
+let vw = 0, vh = 0;
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight; if (w === vw && h === vh) return; vw = w; vh = h;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = w / h < 1 ? 50 : 34; camera.updateProjectionMatrix();
+  const pr = renderer.getPixelRatio(), W2 = Math.floor(w * pr), H2 = Math.floor(h * pr);
+  RT.col.setSize(W2, H2); RT.coc.setSize(W2, H2); RT.out.setSize(W2, H2); bloom.setSize(W2, H2);
+}
+function drawToCanvas(tex, flip, ctx2, cw, ch, vig = 0.15) {
+  const pr = renderer.getPixelRatio();
+  renderer.setRenderTarget(null);
+  renderer.setViewport(0, 0, RET_W / pr, RET_H / pr);
+  finalMat.uniforms.tIn.value = tex; finalMat.uniforms.uFlip.value = flip ? 1 : 0; finalMat.uniforms.uVig.value = vig; finalMat.uniforms.uGrain.value = 0.012;
+  fsFinal.render(renderer);
+  const H = renderer.domElement.height, sw = Math.round(RET_W), sh = Math.round(RET_H);
+  ctx2.drawImage(renderer.domElement, 0, H - sh, sw, sh, 0, 0, cw, ch);
+  renderer.setViewport(0, 0, vw, vh);
+}
+function renderRetina(F, p) {
+  cocU.uF.value = F; cocU.uP.value = p;
+  const vis = [eye.visible, specs.visible]; eye.visible = false; specs.visible = false;
+  renderDOF(retinaCam, RT.rcol, RT.rcoc, RT.rout, RET_H / (retinaCam.fov * Math.PI / 180), null);
+  eye.visible = vis[0]; specs.visible = vis[1];
+}
+function makeThumbs() { // each thumbnail: a 12-degree view from the eye, aimed at its target, focused on it
+  PRESETS.forEach((p, i) => {
+    retinaCam.fov = 12; retinaCam.lookAt(TGT[i].c); retinaCam.updateProjectionMatrix(); retinaCam.updateMatrixWorld();
+    renderRetina(1 / p.d, 0.004); const f = frames[i]; drawToCanvas(RT.rout.texture, false, f.cv.getContext('2d'), f.cv.width, f.cv.height, 0.3);
+  });
+  retinaCam.fov = 28; retinaCam.lookAt(retinaCam.position.clone().add(new THREE.Vector3(1, 0, 0))); retinaCam.updateProjectionMatrix(); retinaCam.updateMatrixWorld();
+}
+
+const clock = new THREE.Clock(); let frameN = 0, tSum = 0;
+const MAX_FRAMES = +qs.get('frames') || 0;   // ?frames=N stops the loop (used for headless screenshots)
+function frame() {
+  if (!MAX_FRAMES || frameN < MAX_FRAMES - 1) requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), 0.1); tSum += dt; frameN++;
+  resize();
+  // animation
+  const kk = 1 - Math.exp(-dt * 5);
+  st.tension += (st.target - st.tension) * kk;
+  st.pupilR += (st.pupil / 2 - st.pupilR) * (1 - Math.exp(-dt * 6));
+  st.explode += ((st.exploded ? 1 : 0) - st.explode) * (1 - Math.exp(-dt * 4));
+  st.corrShow += ((st.corr && !st.exploded ? 1 : 0) - st.corrShow) * (1 - Math.exp(-dt * 5));
+  if (camTween) { camTween.t = Math.min(1, camTween.t + dt / 1.2); const e = camTween.t < 0.5 ? 2 * camTween.t ** 2 : 1 - (-2 * camTween.t + 2) ** 2 / 2;
+    camera.position.lerpVectors(camTween.p0, camTween.p1, e); controls.target.lerpVectors(camTween.t0, camTween.t1, e); if (camTween.t >= 1) camTween = null; }
+  controls.update();
+  const o = optics();
+  updateEye(o); updatePlane(o); updateRays(o); updateUI(o); drawCiliary();
+  planeMat.uniforms.uT.value = tSum; finalMat.uniforms.uTime.value = tSum % 10;
+  if (frameN === 1) collectCoc();
+  if (frameN === 3) makeThumbs();
+  // 1) retina view (camera at the nodal point)
+  renderRetina(o.F, o.p);
+  drawToCanvas(RT.rout.texture, !st.upright, retCtx, 400, 300);
+  // 2) main view
+  cocU.uF.value = o.F; cocU.uP.value = o.p;
+  renderDOF(camera, RT.col, RT.coc, RT.out, RT.col.height * 1.25, overlay);
+  bloom.render(renderer, null, RT.out, dt, false);
+  renderer.setRenderTarget(null); renderer.setViewport(0, 0, vw, vh);
+  finalMat.uniforms.tIn.value = RT.out.texture; finalMat.uniforms.uFlip.value = 0; finalMat.uniforms.uVig.value = 0.35; finalMat.uniforms.uGrain.value = 0.02;
+  fsFinal.render(renderer);
+  updateLabels();
+  if (frameN === 4) { window.__eyeLabReady = true; document.getElementById('fail').style.display = 'none'; }
+}
+
+/* ------------------------------ start ------------------------------ */
+setNote('focus'); setUpright(false);
+log('Microscope ready. 4× / 0.10, 10× / 0.25, 40× / 0.65. Clean the objective to see the silt.', 'c');
+log('Drag the focus knob, or press 1 2 3. Type help.');
+if (qs.get('cond') && COND[qs.get('cond')]) st.cond = qs.get('cond');
+document.querySelectorAll('#condSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.k === st.cond));
+if (qs.get('corr') === '1') { st.corr = true; $('#corrToggle').checked = true; }
+if ([4,10,40].includes(+qs.get('pupil'))) { st.pupil = +qs.get('pupil'); st.pupilR = st.pupil / 2; document.querySelectorAll('#pupilSeg button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.p === st.pupil)); }
+setPreset(clamp((+qs.get('preset') || 1) - 1, 0, 2), true);
+if (qs.has('tension')) st.target = clamp(+qs.get('tension'), 0, 1);
+st.tension = st.target;
+if (qs.get('view') === 'exploded') { st.exploded = true; st.explode = 1; document.querySelectorAll('#viewSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === '1')); }
+if (qs.get('upright') === '1') setUpright(true);
+if (qs.get('cam') && CAMS[qs.get('cam')]) goCam(qs.get('cam'), true);
+if (qs.get('help') === '1') helpEl.hidden = false;
+st.corrShow = st.corr && !st.exploded ? 1 : 0;
+frame();
+</script>
+</body>
+</html>

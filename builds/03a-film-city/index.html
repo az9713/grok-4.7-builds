@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>City Sleep</title>
+<style>
+html,body{margin:0;height:100%;background:#07080c;color:#efe6d4;font:14px/1.4 Georgia,serif;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+button{position:fixed;left:16px;bottom:16px;background:#efe6d4;color:#14120e;border:0;padding:8px 14px;font:inherit;cursor:pointer}
+</style></head><body>
+<canvas id="c"></canvas>
+<button id="play">Play</button>
+<script>
+const c=document.getElementById("c"), g=c.getContext("2d");
+const DURATION=90;
+let actx, started=0, playing=false;
+function fit(){ c.width=innerWidth*devicePixelRatio; c.height=innerHeight*devicePixelRatio; g.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); }
+addEventListener("resize",fit); fit();
+function tone(freq,when,dur,type,gain){
+  const o=actx.createOscillator(), a=actx.createGain();
+  o.type=type; o.frequency.value=freq;
+  a.gain.setValueAtTime(0.0001,when);
+  a.gain.exponentialRampToValueAtTime(gain,when+0.02);
+  a.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+  o.connect(a); a.connect(actx.destination); o.start(when); o.stop(when+dur+0.05);
+}
+function compose(){
+  const scale=[146.83,174.61,196,220,246.94,293.66];
+  for(let i=0;i<DURATION;i+=0.5){
+    const n=scale[(i*2|0)%scale.length];
+    if((i*2)%4===0) tone(n/2, actx.currentTime+i, 0.9, "sine", 0.08);
+    tone(n, actx.currentTime+i, 0.35, "triangle", 0.045);
+    if(i%7<0.5) tone(n*2, actx.currentTime+i, 0.2, "sine", 0.03);
+  }
+}
+function scene(t,w,h){
+  const phase=t/DURATION;
+  const night=phase<0.72;
+  g.fillStyle=night?"#0c1020":"#f0c9a0"; g.fillRect(0,0,w,h);
+  const blocks=[[40,0.55,70],[120,0.4,50],[200,0.62,90],[300,0.48,60],[380,0.7,40]];
+  blocks.forEach((b,i)=>{
+    const x=(b[0]/480)*w, bh=b[1]*h, bw=(b[2]/480)*w;
+    g.fillStyle=night?"#16141c":"#6a5348";
+    g.fillRect(x,h-bh,bw,bh);
+    for(let yy=h-bh+8; yy<h-8; yy+=14){
+      for(let xx=x+6; xx<x+bw-6; xx+=12){
+        const on=night && ((i*3+xx+yy)%17)<7;
+        g.fillStyle=on?"#f2c14e":(night?"#0e0c12":"#cbb59a");
+        g.fillRect(xx,yy,6,8);
+      }
+    }
+  });
+  const lights=[[0,"#c0392b"],[1,"#e6c15a"],[2,"#3d8f4a"]];
+  const which=(t/1.6|0)%3;
+  g.fillStyle=lights[which][1];
+  g.fillRect(w*0.08,h*0.72,10,22);
+  if(phase>0.15){
+    for(let i=0;i<8;i++){
+      const x=((t*30+i*80)% (w+40))-20;
+      const y=h*0.42+Math.sin(t+i)*20;
+      g.fillStyle="#d9d3c4";
+      g.beginPath(); g.ellipse(x,y,7,3,0.4,0,7); g.fill();
+    }
+  }
+  if(phase>0.35){
+    g.strokeStyle="rgba(220,220,220,0.35)";
+    for(let i=0;i<5;i++){
+      g.beginPath();
+      g.moveTo(w*0.6+i*8, h*0.5);
+      g.quadraticCurveTo(w*0.62, h*0.3-i*6, w*0.55, h*0.15);
+      g.stroke();
+    }
+  }
+  if(phase>0.55){
+    g.strokeStyle=night?"#3a4658":"#8a6a55";
+    for(let i=0;i<6;i++){
+      g.beginPath();
+      const y=h*0.78+i*6;
+      g.moveTo(0,y);
+      for(let x=0;x<w;x+=16) g.lineTo(x, y+Math.sin(x*0.02+t+i)*3);
+      g.stroke();
+    }
+  }
+  if(phase>0.78){
+    g.fillStyle="#8aa0b0";
+    g.fillRect(w*0.72, h*0.22, 18, h*0.5);
+    g.beginPath(); g.arc(w*0.72+9, h*0.2, 16, 0, 7); g.fill();
+  }
+  g.fillStyle=night?"#f4efe4":"#2a1c14";
+  g.font="28px Georgia, serif";
+  g.fillText(night?"one window stays yellow":"the water tower takes the light", 24, 48);
+}
+function draw(now){
+  const w=innerWidth,h=innerHeight;
+  const t=playing? Math.min(DURATION,(now-started)/1000) : 0;
+  scene(t,w,h);
+  if(!playing || t<DURATION) requestAnimationFrame(draw);
+}
+document.getElementById("play").onclick=()=>{
+  actx=actx||new AudioContext();
+  actx.resume();
+  compose();
+  playing=true; started=performance.now();
+  document.getElementById("play").remove();
+};
+requestAnimationFrame(draw);
+</script></body></html>

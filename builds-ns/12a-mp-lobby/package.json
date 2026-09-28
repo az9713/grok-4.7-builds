@@ -1,0 +1,16 @@
+{
+  "name": "lobby-buffer",
+  "version": "1.0.0",
+  "description": "Localhost multiplayer sit-down floor buffers clearing confetti in a hotel lobby",
+  "private": true,
+  "type": "commonjs",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "three": "^0.169.0",
+    "ws": "^8.18.0"
+  }
+}

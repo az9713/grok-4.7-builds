@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Cremona Bench</title>
+<style>
+body{margin:0;background:#14110e;color:#f4ead8;font:18px/1.45 Georgia,serif}
+main{max-width:760px;margin:0 auto;padding:32px 18px 80px}
+button{background:#f4ead8;color:#1a1612;border:0;padding:8px 12px;margin:4px;font:inherit;cursor:pointer}
+.slot{display:inline-block;width:120px;height:80px;margin:6px;background:#2a241c;vertical-align:top;padding:8px}
+#end{display:none}
+</style></head><body><main>
+<h1>Cremona Bench</h1>
+<p>Candlelight in a violin workshop. Fit the bass bar, then the soundpost. No secret varnish.</p>
+<div id="play"></div>
+<p id="note"></p>
+<div id="end"><h2>The room goes quiet.</h2><p>The bass bar runs under the bass-side top. The soundpost stands just behind the treble bridge foot. Varnish recipes are ordinary shop practice, not a lost spell.</p></div>
+</main>
+<script>
+const FACTS=[{"prompt": "Fit the bass bar.", "note": "", "choices": [{"label": "Under the bass-side top, along the grain", "ok": true, "why": ""}, {"label": "Across the back, as a handle", "ok": false, "why": "The bass bar is glued inside the top."}]}, {"prompt": "Set the soundpost.", "note": "The tone changes when it moves a millimeter.", "choices": [{"label": "Just behind the treble foot of the bridge", "ok": true, "why": ""}, {"label": "In the pegbox", "ok": false, "why": "That is where the pegs and the nut live."}]}, {"prompt": "What made the tone?", "note": "", "choices": [{"label": "The graduations, the bar, and the post", "ok": true, "why": ""}, {"label": "A secret varnish", "ok": false, "why": "There is no evidence of a lost magical varnish."}]}];
+const play=document.getElementById("play");
+let step=0, mounted=[];
+function render(){
+  const f=FACTS[step];
+  play.innerHTML=`<p>${f.prompt}</p>`+f.choices.map((c,i)=>`<button data-i="${i}">${c.label}</button>`).join("");
+  document.getElementById("note").textContent=f.note||"";
+  play.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    const choice=f.choices[+b.dataset.i];
+    if(!choice.ok){ document.getElementById("note").textContent=choice.why; return; }
+    step++;
+    if(step>=FACTS.length){ play.innerHTML=""; document.getElementById("end").style.display="block"; }
+    else render();
+  });
+}
+render();
+</script></body></html>

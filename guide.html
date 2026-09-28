@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fifteen build skills — user guide</title>
+<meta name="description" content="How to name a skill, give it a new subject, and make a playable build in the vein of the Opus 5.5 variations.">
+<style>
+  :root {
+    --paper: #f3ecdf;
+    --ink: #1a1612;
+    --muted: #5e564c;
+    --line: #d9d0c2;
+    --accent: #8f2d14;
+    --accent-ink: #fff8f3;
+    --code: #efe6d6;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: "Segoe UI", system-ui, sans-serif;
+    --mono: Consolas, "Cascadia Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 19px/1.5 var(--serif);
+  }
+  a { color: var(--accent); }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .wrap { width: min(880px, calc(100% - 40px)); margin: 0 auto; }
+  header.top {
+    border-bottom: 1px solid var(--line);
+    padding: 28px 0 32px;
+  }
+  .kicker {
+    margin: 0 0 12px;
+    font: 600 13px/1 var(--sans);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  h1 {
+    margin: 0 0 14px;
+    font-size: clamp(40px, 6vw, 64px);
+    line-height: 0.98;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .lede { margin: 0; max-width: 38em; font-size: 22px; line-height: 1.35; }
+  .sources {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 22px;
+    margin: 22px 0 0;
+    padding: 0;
+    list-style: none;
+    font: 15px/1.4 var(--sans);
+  }
+  nav.contents {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: color-mix(in srgb, var(--paper) 92%, white);
+    border-bottom: 1px solid var(--line);
+  }
+  nav.contents ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin: 0 auto;
+    padding: 12px 0;
+    width: min(880px, calc(100% - 40px));
+    list-style: none;
+    font: 14px/1.3 var(--sans);
+  }
+  nav.contents a { text-decoration: none; }
+  nav.contents a:hover { text-decoration: underline; }
+  main { padding-bottom: 72px; }
+  section { padding-top: 42px; scroll-margin-top: 52px; }
+  article.skill-block { scroll-margin-top: 56px; }
+  h2 {
+    margin: 0 0 12px;
+    font-size: clamp(28px, 4vw, 36px);
+    line-height: 1.1;
+    font-weight: 600;
+  }
+  h3 { margin: 28px 0 8px; font-size: 22px; font-weight: 600; }
+  p { margin: 0 0 14px; }
+  .muted { color: var(--muted); }
+  ol.steps, ul.plain { margin: 0 0 14px; padding-left: 1.2em; }
+  ol.steps li, ul.plain li { margin: 0 0 8px; }
+  code, .skill {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--code);
+    padding: 0.05em 0.35em;
+  }
+  .prompt {
+    position: relative;
+    margin: 0 0 8px;
+    background: #241c16;
+    color: #f6efe4;
+    border-radius: 8px;
+  }
+  .prompt pre {
+    margin: 0;
+    padding: 16px 16px 18px;
+    overflow-x: auto;
+    font: 14.5px/1.45 var(--mono);
+    white-space: pre-wrap;
+  }
+  .copy {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    border: 1px solid #8d7b68;
+    background: transparent;
+    color: #f6efe4;
+    font: 13px/1 var(--sans);
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .copy:hover { background: #3a2e24; }
+  .copy.done { border-color: #d7b08a; color: #f0d2b4; }
+  .note {
+    margin: 18px 0;
+    padding: 14px 16px;
+    border-left: 3px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 7%, var(--paper));
+  }
+  .note p:last-child { margin-bottom: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font: 15px/1.4 var(--sans);
+    margin: 8px 0 18px;
+  }
+  th, td {
+    text-align: left;
+    vertical-align: top;
+    padding: 10px 12px 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  th { font-weight: 650; color: var(--muted); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
+  article.skill-block {
+    padding: 26px 0 8px;
+    border-top: 1px solid var(--line);
+  }
+  article.skill-block h3 {
+    margin: 0 0 6px;
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .what { margin: 0 0 12px; }
+  .variant {
+    margin: 16px 0 6px;
+    font: 600 13px/1.3 var(--sans);
+    letter-spacing: 0.01em;
+  }
+  .variant span { color: var(--accent); margin-right: 0.4em; }
+  dl.meta { margin: 0 0 12px; }
+  dl.meta div { display: grid; grid-template-columns: 7.5em 1fr; gap: 8px; margin: 0 0 6px; }
+  dt { font: 600 13px/1.4 var(--sans); color: var(--muted); padding-top: 3px; }
+  dd { margin: 0; }
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 28px 0 48px;
+    color: var(--muted);
+    font: 15px/1.45 var(--sans);
+  }
+  @media (max-width: 640px) {
+    body { font-size: 18px; }
+    dl.meta div { grid-template-columns: 1fr; gap: 2px; }
+    .copy { position: static; display: inline-block; margin: 0 0 8px 8px; }
+    .prompt pre { padding-top: 12px; }
+  }
+  @media print {
+    nav.contents, .copy { display: none; }
+    body { background: white; }
+    .prompt { break-inside: avoid; }
+    a { color: inherit; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <p class="kicker">User guide</p>
+    <h1>Name the skill. Then name a new subject.</h1>
+    <p class="lede">Fifteen skills in this folder each carry one technique from the Opus 5.5 builds. You bring the subject. The agent builds a piece you can play, watch, or click through.</p>
+    <ul class="sources">
+      <li><a href="https://www.youtube.com/watch?v=dw4rYWy8nLw">Source video</a></li>
+    </ul>
+  </div>
+</header>
+<nav class="contents" aria-label="On this page">
+  <ul>
+    <li><a href="#call">Call a skill</a></li>
+    <li><a href="#subject">Change the subject</a></li>
+    <li><a href="#play">Play the result</a></li>
+    <li><a href="#catalog">The fifteen</a></li>
+    <li><a href="#bar">The bar</a></li>
+  </ul>
+</nav>
+<main>
+  <section id="call">
+    <div class="wrap">
+      <h2>Call a skill by name</h2>
+      <p>The skills live in <code>.cursor/skills/</code> in this project. Each one is marked so the agent does not pick it up on its own. A request like “make something cool” will not load them.</p>
+      <p>In Cursor chat, write the skill name in the message. Use this shape:</p>
+      <div class="prompt">
+        <button class="copy" type="button" data-target="shape">Copy</button>
+        <pre id="shape">Use the &lt;skill-name&gt; skill.
+Subject: &lt;one sentence that is not the reference build&gt;.
+&lt;Whatever that skill asks you to supply: photos, a sketch, a title, a place.&gt;</pre>
+      </div>
+      <p class="muted">Example: <span class="skill">browser-soulslike</span> with a flooded subway, not the snowbound monastery in the reference.</p>
+      <div class="note">
+        <p>These skills belong to this project. Open this folder in Cursor before you chat. Copying only this HTML file into another repo does not bring the skills with it. Copy <code>.cursor/skills/</code> too.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="subject">
+    <div class="wrap">
+      <h2>Keep the technique. Change the subject.</h2>
+      <p>That is the rule in the variation set. The source video, <a href="https://www.youtube.com/watch?v=dw4rYWy8nLw">Top 15 Things built with Claude OPUS 5.5</a>, shows fifteen builds other people posted. The repo keeps each technique and look, and swaps the subject. A camera-lens lab becomes an eye lab. A kart racer becomes a jet-ski racer. A sand film of US history becomes a sand film of the Silk Road.</p>
+      <p>Do the same thing one step further. The reference is there so the agent can see a working shape. Your message names the new subject. If you want the reference subject itself, say so. Otherwise the skill is written to refuse that default.</p>
+      <h3>A subject is a picture, not a genre</h3>
+      <p>“A game” gives the agent nothing to aim at. “A soulslike in a flooded subway, rest at the ticket booths” can be screenshotted, explained in one sentence, and handed to a friend.</p>
+      <p>Write the subject before you call the skill. One sentence, plus the props that belong in the thumbnail: the tool in the player’s hands, the year on the sand table, the title on the film card.</p>
+    </div>
+  </section>
+
+  <section id="play">
+    <div class="wrap">
+      <h2>Play it, then run the checks</h2>
+      <p>Most of these builds are one HTML file. Browsers block ES modules opened with <code>file://</code>, so serve the folder:</p>
+      <div class="prompt">
+        <button class="copy" type="button" data-target="serve">Copy</button>
+        <pre id="serve">python -m http.server 8000</pre>
+      </div>
+      <p>Then open <code>http://localhost:8000/</code> and the page the agent just wrote. Turn sound on for films and title sequences.</p>
+      <p>Each skill ends with checks you can see: drag the control, finish a race, rest at a shrine and watch the enemy return, pull the keystone and watch the structure fall from the physics. Do those. A build that only looks right in a screenshot is not done.</p>
+      <p>Five skills need something besides a browser tab:</p>
+      <table>
+        <thead>
+          <tr><th>Skill</th><th>Also install</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="skill">painted-lyric-video</span></td><td>Node, Google Chrome, ffmpeg. A sung vocal only if you supply audio or a singing tool.</td></tr>
+          <tr><td><span class="skill">procedural-blender-scene</span></td><td>Blender on the PATH. The reference used Blender 5.2. If Blender is missing, the agent should stop.</td></tr>
+          <tr><td><span class="skill">local-multiplayer-sim</span></td><td>Node. Run <span class="skill">npm install</span> and <span class="skill">npm start</span>, then open two browser windows with different <span class="skill">?name=</span> links.</td></tr>
+          <tr><td><span class="skill">marker-sketchbook</span></td><td>A <span class="skill">photos/</span> folder of your own JPGs, file names used as captions.</td></tr>
+          <tr><td><span class="skill">sketch-to-rigid-body</span></td><td>A photo of a pencil sketch.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="catalog">
+    <div class="wrap">
+      <h2>The fifteen</h2>
+      <p>Each skill has three prompts. They do not share a setting. Send one as written, or write a fourth subject that is unlike all three. None of them is the reference build.</p>
+
+      <article class="skill-block" id="interactive-focus-lab">
+        <h3>interactive-focus-lab</h3>
+        <p class="what">A dark 3D lab. A cutaway instrument on a bench. Drag the focus control and a sharp plane moves through a tabletop diorama.</p>
+        <dl class="meta">
+          <div><dt>You supply</dt><dd>The instrument, three distances, and any defects.</dd></div>
+          <div><dt>Reference</dt><dd>Eye Lab, a lens-lab variation.</dd></div>
+        </dl>
+        <p class="variant"><span>A</span> Night street, a camera</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p1a">Copy</button>
+          <pre id="p1a">Use the interactive-focus-lab skill.
+Subject: a camera lens on an optical bench, at night.
+Diorama: a neon sign close, a parked car in the middle, a tower far away.
+Apertures: f/2, f/5.6, and f/16. Include an exploded view and named textbook values.</pre>
+        </div>
+        <p class="variant"><span>B</span> A pond drop, a microscope</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p1b">Copy</button>
+          <pre id="p1b">Use the interactive-focus-lab skill.
+Subject: a compound microscope over a drop of pond water, in daylight.
+Diorama inside the drop: a strand of algae close, a water flea in the middle, a grain of silt far.
+Show the condenser iris at three openings. A dirty objective veils the silt. A cleaned objective makes it sharp.
+Exploded view: eyepiece, objective, stage, mirror. Name the magnification of each objective from a real student microscope.</pre>
+        </div>
+        <p class="variant"><span>C</span> A rooftop, a telescope</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p1c">Copy</button>
+          <pre id="p1c">Use the interactive-focus-lab skill.
+Subject: a small refracting telescope on a rooftop at night.
+Diorama in the sky: a moon crater close, Saturn in the middle, a radio mast on the horizon far.
+The drag control is the drawtube. Show chromatic fringe at the moon's edge, and a filter that removes it.
+Exploded view: objective lens, drawtube, eyepiece. Use published focal lengths and name them.</pre>
+        </div>
+      </article>
+
+      <article class="skill-block" id="painted-lyric-video">
+        <h3>painted-lyric-video</h3>
+        <p class="what">A 2.5 minute music video painted with p5.js and p5.brush. One visual joke per lyric line, karaoke captions, then an MP4 from Chrome and ffmpeg.</p>
+        <dl class="meta">
+          <div><dt>You supply</dt><dd>A song, or permission to compose one in code. Characters. A one-sentence story. Node, Chrome, and ffmpeg.</dd></div>
+          <div><dt>Reference</dt><dd>Clawd Goes to Sea, a painted lyric film.</dd></div>
+        </dl>
+        <p class="variant"><span>A</span> Warm, comic, a kitchen</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p2a">Copy</button>
+          <pre id="p2a">Use the painted-lyric-video skill.
+Subject: a 2.5 minute work song about a night baker.
+Characters: the baker, a cat on the bench, a cyclist with a delivery crate.
+Story: the bread rises, the cat sits in the flour, the cyclist arrives as the sun does.
+Compose the music in code. No sung vocal. Keep it quick and warm.</pre>
+        </div>
+        <p class="variant"><span>B</span> Cold, slow, underwater</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p2b">Copy</button>
+          <pre id="p2b">Use the painted-lyric-video skill.
+Subject: a 2.5 minute dirge for a sunken submarine.
+Characters: a captain, a gauge that will not stop dripping, a paper boat.
+Story: the boat descends, the lights go out one by one, the paper boat is still on the surface.
+Compose the music in code as a slow march. No sung vocal. No cute animals.</pre>
+        </div>
+        <p class="variant"><span>C</span> Loud, fast, a rink</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p2c">Copy</button>
+          <pre id="p2c">Use the painted-lyric-video skill.
+Subject: a 2.5 minute bragging chant for a roller derby team.
+Characters: a jammer, a referee with a whistle, a helmet that will not stay on.
+Story: the jam starts, the helmet flies into the crowd, the jammer takes the last point.
+Compose the music in code. Fast, loud, stomps and a whistle. No sung vocal.</pre>
+        </div>
+      </article>
+
+      <article class="skill-block" id="coded-pattern-film">
+        <h3>coded-pattern-film</h3>
+        <p class="what">A short film in one HTML file. Each scene is one pattern. One small character links them. The score is synthesized in the page.</p>
+        <dl class="meta">
+          <div><dt>You supply</dt><dd>A theme, the linking character, and the scenes. Ask the agent to listen to the instruments before finishing.</dd></div>
+          <div><dt>Reference</dt><dd>Small Weather, a pattern film.</dd></div>
+        </dl>
+        <p class="variant"><span>A</span> City, quiet</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p3a">Copy</button>
+          <pre id="p3a">Use the coded-pattern-film skill.
+Subject: how a city goes to sleep.
+Linking character: a small yellow window.
+Scenes: traffic lights phasing, pigeons turning as one flock, steam from a grate, subway lines growing like roots, dawn on a water tower.
+Score for piano and upright bass. Listen before you finish.</pre>
+        </div>
+        <p class="variant"><span>B</span> A hive, gold</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p3b">Copy</button>
+          <pre id="p3b">Use the coded-pattern-film skill.
+Subject: how a hive chooses a new home.
+Linking character: one bee.
+Scenes: the waggle dance as a geometric path, hex cells filling, workers fanning a hot brood, a swarm lifting off, scouts landing on one branch.
+Score for violin and woodblock. Listen before you finish.</pre>
+        </div>
+        <p class="variant"><span>C</span> A desert, violent</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p3c">Copy</button>
+          <pre id="p3c">Use the coded-pattern-film skill.
+Subject: a flash flood in a dry wash.
+Linking character: a tin cup left on a rock.
+Scenes: cracked earth as polygons, the first drops, channels braiding, a wall of brown water, the cup still on the rock after.
+Score for frame drum and low cello. Listen before you finish.</pre>
+        </div>
+      </article>
+
+      <article class="skill-block" id="one-prompt-title-sequence">
+        <h3>one-prompt-title-sequence</h3>
+        <p class="what">Fifteen seconds, one pass, sound in the page. You name the title and nothing else. The three titles imply different films. Do not add a palette or a shot list.</p>
+        <dl class="meta">
+          <div><dt>You supply</dt><dd>A title. Nothing else, unless you want a change after the first pass.</dd></div>
+          <div><dt>Reference</dt><dd>Meridian, a 15-second title. The reference missed the original “max effort, one sentence” method. This skill follows the method.</dd></div>
+        </dl>
+        <p class="variant"><span>A</span> Cold, documentary</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p4a">Copy</button>
+          <pre id="p4a">Use the one-prompt-title-sequence skill.
+Title: NORTH ATLANTIC.</pre>
+        </div>
+        <p class="variant"><span>B</span> Domestic, small</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p4b">Copy</button>
+          <pre id="p4b">Use the one-prompt-title-sequence skill.
+Title: KITCHEN, 4 A.M.</pre>
+        </div>
+        <p class="variant"><span>C</span> Fairy-tale, absurd</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p4c">Copy</button>
+          <pre id="p4c">Use the one-prompt-title-sequence skill.
+Title: THE LAST COURT OF THE MUSHROOM KING.</pre>
+        </div>
+      </article>
+
+      <article class="skill-block" id="browser-soulslike">
+        <h3>browser-soulslike</h3>
+        <p class="what">A third-person browser game. Serif title screen, area names on arrival, health, stamina, flasks, and rest points that heal you and bring enemies back.</p>
+        <dl class="meta">
+          <div><dt>You supply</dt><dd>The place, the player, and the enemies. At least three areas.</dd></div>
+          <div><dt>Reference</dt><dd>Frostbound Monastery, a browser soulslike.</dd></div>
+        </dl>
+        <p class="variant"><span>A</span> Drowned, modern</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p5a">Copy</button>
+          <pre id="p5a">Use the browser-soulslike skill.
+Subject: a flooded subway.
+The player carries a signal lamp and a short sword.
+Areas: the mezzanine, the drowned platform, the service tunnel.
+Rest at ticket booths. Walk into each area and confirm the name banner.</pre>
+        </div>
+        <p class="variant"><span>B</span> Bright, tropical, scientific</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p5b">Copy</button>
+          <pre id="p5b">Use the browser-soulslike skill.
+Subject: a radio telescope sunk in a coral lagoon, noon light through clear water.
+The player is a diver in a canvas suit with a knife.
+Areas: the dish rim, the control hut, the cable trench.
+Rest at generator sheds. Enemies are things that moved into the dish, not knights.
+Walk into each area and confirm the name banner.</pre>
+        </div>
+        <p class="variant"><span>C</span> Dry, candlelit, bureaucratic</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p5c">Copy</button>
+          <pre id="p5c">Use the browser-soulslike skill.
+Subject: a tax archive after hours, candlelight, paper, no water and no snow.
+The player is a clerk with a stamp-seal and a letter opener.
+Areas: the ledger hall, the room of burning files, the vault of wax seals.
+Rest at writing desks. Enemies wear ink-stained coats.
+Walk into each area and confirm the name banner.</pre>
+        </div>
+      </article>
+
+      <article class="skill-block" id="voxel-fluid-sandbox">
+        <h3>voxel-fluid-sandbox</h3>
+        <p class="what">A voxel world you can mine and build in. Two fluids flow and react. A timed event changes the map. Full day and night, with heavy shading.</p>
+        <dl class="meta">
+          <div><dt>You supply</dt><dd>The biome, the two fluids, and what happens when they touch.</dd></div>
+          <div><dt>Reference</dt><dd>The Volcano Test, a voxel sandbox.</dd></div>
+        </dl>
+        <p class="variant"><span>A</span> Coast, geological</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p6a">Copy</button>
+          <pre id="p6a">Use the voxel-fluid-sandbox skill.
+Subject: a tide-pool island.
+Fluids: seawater and hot vent water. Where they meet, the block becomes basalt.
+Every few minutes the tide rises. Include a hotbar, reflective water, and a full day-night cycle.</pre>
+        </div>
+        <p class="variant"><span>B</span> Indoors, comic, sweet</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p6b">Copy</button>
+          <pre id="p6b">Use the voxel-fluid-sandbox skill.
+Subject: a candy factory at night, indoors, no sky island.
+Fluids: melted chocolate and cold milk. Where they meet, the block becomes fudge you can mine.
+Every few minutes a mixer overflows. Hotbar of candy blocks. The chocolate glows. A day-night cycle shows through the factory windows only.</pre>
+        </div>
+        <p class="variant"><span>C</span> White, empty, dangerous</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p6c">Copy</button>
+          <pre id="p6c">Use the voxel-fluid-sandbox skill.
+Subject: a camp on a glacier, white and nearly featureless.
+Fluids: meltwater and lamp oil. Where they meet, the oil becomes a solid tar crust.
+Every few minutes a crevasse opens and widens. Hotbar of ice, snow, and tar. The oil burns as a light source at night. Full day-night cycle, long blue twilight.</pre>
+        </div>
+      </article>
+
+      <article class="skill-block" id="procedural-blender-scene">
+        <h3>procedural-blender-scene</h3>
+        <p class="what">A Blender scene with no imported models or textures. A gray-clay screenshot after each step, a time-lapse, and a titled hero shot.</p>
+        <dl class="meta">
+          <div><dt>You supply</dt><dd>The place, the time of day, and a title if you care about the words. Blender installed.</dd></div>
+          <div><dt>Reference</dt><dd>Storm Lighthouse, a procedural scene, plus its clay time-lapse.</dd></div>
+        </dl>
+        <p class="variant"><span>A</span> Hill, weather, romance</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p7a">Copy</button>
+          <pre id="p7a">Use the procedural-blender-scene skill.
+Subject: a glasshouse on a hill at blue hour, with a storm arriving.
+Hero title: GLASSHOUSE.
+Procedural geometry and materials only. Clay screenshot after each step, then a final render.</pre>
+        </div>
+        <p class="variant"><span>B</span> One stall, rain, small</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p7b">Copy</button>
+          <pre id="p7b">Use the procedural-blender-scene skill.
+Subject: a single noodle stall on an empty street, rain, a puddle, a neon sign the size of a door. No cliff, no lighthouse, no storm heroics.
+Hero title: MIDNIGHT BROTH.
+Procedural geometry and materials only. Clay screenshot after each step, then a final render. Keep the camera close enough to read the bowls.</pre>
+        </div>
+        <p class="variant"><span>C</span> A pit, noon, industrial</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p7c">Copy</button>
+          <pre id="p7c">Use the procedural-blender-scene skill.
+Subject: an open-pit mine at harsh noon. White dust, one haul truck, no rain and no sunset.
+Hero title: BENCH 7.
+Procedural geometry and materials only. Clay screenshot after each step, then a final render.</pre>
+        </div>
+      </article>
+
+      <article class="skill-block" id="pure-code-pixel-actor">
+        <h3>pure-code-pixel-actor</h3>
+        <p class="what">A small character in large pixels, drawn in code, no sprite sheet. Idle, charge, action. A fixed palette. Particles and screen shake.</p>
+        <dl class="meta">
+          <div><dt>You supply</dt><dd>The character, the setting, and the action. A palette size, or accept 24.</dd></div>
+          <div><dt>Reference</dt><dd>Pixel Dragon, a code-drawn pixel actor.</dd></div>
+        </dl>
+        <p class="variant"><span>A</span> Pier, a beam of light</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p8a">Copy</button>
+          <pre id="p8a">Use the pure-code-pixel-actor skill.
+Subject: a keeper on a pier at night.
+Loop: idle and blink, raise a lantern, then the beam sweeps the water.
+Fixed 24-color palette. No sprite sheet. Count the colors on a screenshot.</pre>
+        </div>
+        <p class="variant"><span>B</span> Afternoon, a bout, a slap</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p8b">Copy</button>
+          <pre id="p8b">Use the pure-code-pixel-actor skill.
+Subject: a sumo wrestler in a dohyo, afternoon, warm wood, a small crowd.
+Loop: idle and breathe, throw a handful of salt, then a slap that shakes the ring.
+Fixed 24-color palette. No sprite sheet. Daylight, not a night sky. Count the colors on a screenshot.</pre>
+        </div>
+        <p class="variant"><span>C</span> Almost no set, a lure</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p8c">Copy</button>
+          <pre id="p8c">Use the pure-code-pixel-actor skill.
+Subject: an anglerfish in black water. The set is darkness plus a few specks.
+Loop: drift and blink, the lure brightens, then the jaws open and shake the frame.
+Fixed 16-color palette, mostly black. No sprite sheet. Count the colors on a screenshot.</pre>
+        </div>
+      </article>
+
+      <article class="skill-block" id="coded-artifact-game">
+        <h3>coded-artifact-game</h3>
+        <p class="what">One HTML file, about 3 MB. A cinematic 3D scene, a period-dressed player, fact captions, a puzzle about how the artifact works, and a quiet ending. Art and sound generated in code.</p>
+        <dl class="meta">
+          <div><dt>You supply</dt><dd>A real artifact. The captions have to be historically right.</dd></div>
+          <div><dt>Reference</dt><dd>The Stone of Rashid, a coded artifact game.</dd></div>
+        </dl>
+        <p class="variant"><span>A</span> 1977, a clean room, space</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p9a">Copy</button>
+          <pre id="p9a">Use the coded-artifact-game skill.
+Subject: the Voyager Golden Record, assembled in a clean room in 1977.
+The player mounts the images and the stylus. Captions must use real dates and contents.
+End on the probe past Saturn, the record on the hull. No network requests after load.</pre>
+        </div>
+        <p class="variant"><span>B</span> Crete, noon, undeciphered</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p9b">Copy</button>
+          <pre id="p9b">Use the coded-artifact-game skill.
+Subject: the Phaistos disc, found in a dig on Crete in harsh noon light.
+The player brushes dust and matches stamp-signs around the spiral.
+Captions must say what is known and must say that the text is not deciphered. Do not invent a translation.
+End with the disc in a museum case at night. No network requests after load.</pre>
+        </div>
+        <p class="variant"><span>C</span> A workshop, candle, wood</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p9c">Copy</button>
+          <pre id="p9c">Use the coded-artifact-game skill.
+Subject: a violin in an early-18th-century Cremona workshop, candlelight, one bench.
+The player fits the bass bar and the soundpost. The puzzle is heard: the tone changes when the post moves.
+Captions use real shop practice and do not claim a secret varnish formula.
+End in the same room, silent, the violin on the bench. No network requests after load.</pre>
+        </div>
+      </article>
+
+      <article class="skill-block" id="browser-arcade-racer">
+        <h3>browser-arcade-racer</h3>
+        <p class="what">A finished cartoon 3D racer. Title, eight original characters, three tracks, items that change the race, AI, and lap times.</p>
+        <dl class="meta">
+          <div><dt>You supply</dt><dd>The vehicle and the setting. Names must be original.</dd></div>
+          <div><dt>Reference</dt><dd>Spraywave Rally, a browser arcade racer.</dd></div>
+        </dl>
+        <p class="variant"><span>A</span> Night, dense, bicycles</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p10a">Copy</button>
+          <pre id="p10a">Use the browser-arcade-racer skill.
+Subject: delivery bicycles through a night market.
+Eight original riders with stat bars. Three tracks with title cards.
+Item crates with a boost and one other effect. Finish a race and show lap times.</pre>
+        </div>
+        <p class="variant"><span>B</span> Dawn, white, ice</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p10b">Copy</button>
+          <pre id="p10b">Use the browser-arcade-racer skill.
+Subject: iceboats on a frozen lake at dawn. Wide, white, almost no buildings.
+Eight original skippers. Three tracks: open ice, a field of fishing holes, a narrowing lead of black water.
+Hazards are cracks, not barriers. Item crates: a gust and a drag anchor. Finish a race and show lap times.
+Invent the names. No trademarked characters.</pre>
+        </div>
+        <p class="variant"><span>C</span> Indoor, fluorescent, absurd</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p10c">Copy</button>
+          <pre id="p10c">Use the browser-arcade-racer skill.
+Subject: office chairs raced through a carpeted convention center. Fluorescent light, no outdoors.
+Eight original coworkers. Three tracks: the exhibit hall, the escalators, the loading dock.
+Item crates: a coffee spill that speeds you up, and a stack of lanyards that slows whoever is ahead.
+Finish a race and show lap times. Invent the names. No trademarked characters.</pre>
+        </div>
+      </article>
+
+      <article class="skill-block" id="sketch-to-rigid-body">
+        <h3>sketch-to-rigid-body</h3>
+        <p class="what">Your pencil sketch, on a desk. The lines lift into 3D, become solid parts, and stand or fall under rigid-body physics.</p>
+        <dl class="meta">
+          <div><dt>You supply</dt><dd>A photo of the sketch. Say which part, if removed, should make it collapse.</dd></div>
+          <div><dt>Reference</dt><dd>Arch Bridge, a sketch lifted into rigid bodies. In that build, pulling the keystone dropped only the crown. This skill treats that as a failed check.</dd></div>
+        </dl>
+        <p class="variant"><span>A</span> Crane, cable, crate</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p11a">Copy</button>
+          <pre id="p11a">Use the sketch-to-rigid-body skill.
+Subject: the pencil sketch at sketch/crane.jpg, a harbor crane.
+A crate hangs from the cable. Sliders for crate mass and cable friction.
+A button removes the main pin. The fall comes from the solver, not from an animation.
+At the default sliders the crate crosses. With the pin removed, the crane falls.</pre>
+        </div>
+        <p class="variant"><span>B</span> A chair, a dowel, a book</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p11b">Copy</button>
+          <pre id="p11b">Use the sketch-to-rigid-body skill.
+Subject: the pencil sketch at sketch/chair.jpg, a wooden kitchen chair. Small, domestic, on the desk.
+A heavy book is set on the seat. Sliders for book mass and joint friction.
+A button pulls one dowel. With the dowel in, the chair holds the book. With it out, the chair folds from the solver.
+Do not keyframe the fold.</pre>
+        </div>
+        <p class="variant"><span>C</span> A well, stone, a bucket</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p11c">Copy</button>
+          <pre id="p11c">Use the sketch-to-rigid-body skill.
+Subject: the pencil sketch at sketch/well.jpg, a spiral stone stair inside a well.
+A bucket hangs on a rope beside the stair. Sliders for bucket mass and block friction.
+A button removes one tread. With every tread in, the bucket can be lowered past the stair. With the tread gone, the spiral drops from the solver.
+Do not keyframe the drop.</pre>
+        </div>
+      </article>
+
+      <article class="skill-block" id="local-multiplayer-sim">
+        <h3>local-multiplayer-sim</h3>
+        <p class="what">First person, several players, one shared world on your PC. A ground change in one window shows up in the others in under a second.</p>
+        <dl class="meta">
+          <div><dt>You supply</dt><dd>The activity, the machine you ride, and the building. Node. Test with two browser windows.</dd></div>
+          <div><dt>Reference</dt><dd>Snow Day, a local multiplayer sim. It runs on your PC, not as a static page.</dd></div>
+        </dl>
+        <p class="variant"><span>A</span> Lobby, party, comic</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p12a">Copy</button>
+          <pre id="p12a">Use the local-multiplayer-sim skill.
+Subject: sit-down floor buffers in a hotel lobby after a party.
+Confetti keeps drifting back onto cleared tile.
+Minimap, chat, join with ?name=. Write a README.
+Test with two windows. A cleared patch in one window appears in the other in under a second.</pre>
+        </div>
+        <p class="variant"><span>B</span> An orchard, dawn, quiet</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p12b">Copy</button>
+          <pre id="p12b">Use the local-multiplayer-sim skill.
+Subject: heated carts in an apple orchard at dawn, in front of a cider barn.
+The carts melt frost off the grass in dark lanes. Frost creeps back.
+The player's hands hold the tiller and a pruning lamp, not a drink.
+Minimap, chat, join with ?name=. Write a README.
+Test with two windows. A melted lane in one window appears in the other in under a second.</pre>
+        </div>
+        <p class="variant"><span>C</span> A salt flat, huge, harsh</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p12c">Copy</button>
+          <pre id="p12c">Use the local-multiplayer-sim skill.
+Subject: brine trucks on a salt flat at noon. The landmark is a half-buried airliner, not a hotel.
+The trucks lay dark wet roads. The salt dries white again.
+Minimap, chat, join with ?name=. Write a README. No mouse-look, so two windows can sit side by side.
+Test with two windows. A wet road in one window appears in the other in under a second.</pre>
+        </div>
+      </article>
+
+      <article class="skill-block" id="glass-mosaic-film">
+        <h3>glass-mosaic-film</h3>
+        <p class="what">An 80 second WebGL2 film. One square mosaic. Figures made of glass tiles break apart, fly, and form again. No libraries and no images.</p>
+        <dl class="meta">
+          <div><dt>You supply</dt><dd>The place, how it changes over the 80 seconds, and the figures.</dd></div>
+          <div><dt>Reference</dt><dd>Four Seasons in Glass, a glass mosaic film.</dd></div>
+        </dl>
+        <p class="variant"><span>A</span> Harbor, noon to night</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p13a">Copy</button>
+          <pre id="p13a">Use the glass-mosaic-film skill.
+Subject: a harbor from noon to night, 80 seconds.
+Figures: gulls, a ferry, lanterns. Each one breaks into tiles and forms again.
+One HTML file. WebGL2. No libraries and no images.</pre>
+        </div>
+        <p class="variant"><span>B</span> One table, no landscape</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p13b">Copy</button>
+          <pre id="p13b">Use the glass-mosaic-film skill.
+Subject: a kitchen table during one argument, 80 seconds. No sky, no harbor, no season.
+The light goes from afternoon to a single lamp.
+Figures: two cups, a torn letter, two hands. Each breaks into tiles and forms again.
+One HTML file. WebGL2. No libraries and no images.</pre>
+        </div>
+        <p class="variant"><span>C</span> A reef, color leaving</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p13c">Copy</button>
+          <pre id="p13c">Use the glass-mosaic-film skill.
+Subject: a coral reef that bleaches and then slowly takes color back, 80 seconds, underwater.
+Figures: a parrotfish, a turtle, a branching coral. Each breaks into tiles and forms again.
+Background tiles lose their color at mid-film and regain it at the end.
+One HTML file. WebGL2. No libraries and no images.</pre>
+        </div>
+      </article>
+
+      <article class="skill-block" id="marker-sketchbook">
+        <h3>marker-sketchbook</h3>
+        <p class="what">Your photos, redrawn in canvas as acrylic-marker drawings, bound into a sketchbook with a page curl and a small print of the original in the corner.</p>
+        <dl class="meta">
+          <div><dt>You supply</dt><dd>10 to 20 JPGs in <span class="skill">photos/</span>. Name each file after the place.</dd></div>
+          <div><dt>Reference</dt><dd>A Japan Rail Sketchbook, a marker sketchbook. A distant figure in that build disappears into the marks. This skill keeps small people readable.</dd></div>
+        </dl>
+        <p class="variant"><span>A</span> Fluorescent, a night shift</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p14a">Copy</button>
+          <pre id="p14a">Use the marker-sketchbook skill.
+Photos in photos/ are a hospital night shift: corridors, a vending machine, faces under fluorescent light.
+If the folder is missing or the pictures are a different trip, ask before you draw.
+Redraw each one in canvas as flat acrylic-marker art. Do not call an image model.
+Keep every person recognizable, including anyone small in the frame.
+Original photo as a small print in the corner. Caption from the file name.
+Page curl on drag and on the arrow keys.</pre>
+        </div>
+        <p class="variant"><span>B</span> Noon, dust, a crowd</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p14b">Copy</button>
+          <pre id="p14b">Use the marker-sketchbook skill.
+Photos in photos/ are a livestock auction at noon: dust, hats, cattle, a crowded rail.
+If the folder is missing or the pictures are a different trip, ask before you draw.
+Redraw each one in canvas as flat acrylic-marker art. Do not call an image model.
+The crowd has to stay a crowd. Do not melt distant people into texture.
+Original photo as a small print in the corner. Caption from the file name.
+Page curl on drag and on the arrow keys.</pre>
+        </div>
+        <p class="variant"><span>C</span> Almost empty, winter, a ferry</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p14c">Copy</button>
+          <pre id="p14c">Use the marker-sketchbook skill.
+Photos in photos/ are an empty winter ferry: the cafeteria, the car deck, one horizon, at most one person per photo.
+If the folder is missing or the pictures are a different trip, ask before you draw.
+Redraw each one in canvas as flat acrylic-marker art. Do not call an image model.
+Leave the empty space empty. Do not invent a crowd.
+Original photo as a small print in the corner. Caption from the file name.
+Page curl on drag and on the arrow keys.</pre>
+        </div>
+      </article>
+
+      <article class="skill-block" id="sand-table-film">
+        <h3>sand-table-film</h3>
+        <p class="what">Two minutes. Dark sand silhouettes on a backlit sepia table. A year and a subtitle in the corner. Sand blows sideways into the next scene. Music composed in the page.</p>
+        <dl class="meta">
+          <div><dt>You supply</dt><dd>The span of years and the scenes. Public-domain tunes only, if you quote existing music. Ask for a listen.</dd></div>
+          <div><dt>Reference</dt><dd>Silk Road in Sand, a sand-table film.</dd></div>
+        </dl>
+        <p class="variant"><span>A</span> Machines, 1903 to 1969</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p15a">Copy</button>
+          <pre id="p15a">Use the sand-table-film skill.
+Subject: the history of flight, 1903 to 1969, two minutes.
+Scenes a viewer can tell apart as silhouettes: the Wright flyer, a barnstormer, a DC-3, a jet airliner, Apollo 11.
+Serif year and subtitle, top left, years ascending.
+Score for brass and snare, composed in code, no audio file. Listen before you finish.</pre>
+        </div>
+        <p class="variant"><span>B</span> One river, no battles</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p15b">Copy</button>
+          <pre id="p15b">Use the sand-table-film skill.
+Subject: one river from 1900 to 2020, two minutes. No armies and no aircraft.
+Scenes: a free channel, a steamboat, a dam, a fish ladder, a dry summer bed.
+Serif year and subtitle, top left, years ascending.
+Score for solo flute and a low drum, composed in code, no audio file. Listen before you finish.</pre>
+        </div>
+        <p class="variant"><span>C</span> Medicine, somber</p>
+        <div class="prompt">
+          <button class="copy" type="button" data-target="p15c">Copy</button>
+          <pre id="p15c">Use the sand-table-film skill.
+Subject: smallpox, from Jenner's lancet in 1796 to eradication in 1980, two minutes.
+Scenes: a lancet and an arm, a crowded ward, a vaccination line, an empty ward, the year of the last natural case.
+Serif year and subtitle, top left, years ascending. Dates must be real.
+Score for a pump organ, composed in code, no audio file. Listen before you finish.</pre>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="bar">
+    <div class="wrap">
+      <h2>What made those builds travel</h2>
+      <p>The video is a tour of work people had already posted. The repo’s own note is plain: a variation keeps the technique and the look, and changes the subject. The pieces that read in a thumbnail share a few concrete traits.</p>
+      <ul class="plain">
+        <li>One screenshot explains the whole idea. A cutaway eye on a bench. A sand table with a year in the corner. A race HUD. A sketch lifting off paper.</li>
+        <li>A stranger can open a link and play, or press play on an MP4. Most references are one HTML file on GitHub Pages. Snow Day is the exception, because it needs a server.</li>
+        <li>The trick is something you can do, not a caption. Drag the muscle. Pour one fluid on the other. Pull the pin. Turn the page. Rest, and the enemies return.</li>
+        <li>Sound is part of the piece when the technique has sound: the lyric video, the pattern film, the title sequence, the sand film.</li>
+        <li>The checks in the skill are the same kind of checks the repo used. The README lists the ones the reference builds missed. Those misses are in the skills as things to fix, not as the look to copy.</li>
+      </ul>
+      <p>When a build is up, record ten seconds of the trick and put that next to the link. That clip is what the original posts were: a short look at a finished object, with the subject changed enough that it is yours.</p>
+      <h3>Before you send</h3>
+      <ol class="steps">
+        <li>Pick one skill from the list above.</li>
+        <li>Pick one of the three prompts, or write a subject unlike all three.</li>
+        <li>Add the inputs that skill asks for. Photos, a sketch, Blender, and a vocal track cannot be implied.</li>
+        <li>Paste the prompt. Wait for a file you can open.</li>
+        <li>Serve it, play it, and run the checks written in that skill’s <code>SKILL.md</code>.</li>
+      </ol>
+    </div>
+  </section>
+</main>
+<footer>
+  <div class="wrap">
+    <p>Skills in <code>.cursor/skills/</code>. References are the fifteen variations of the builds in the <a href="https://www.youtube.com/watch?v=dw4rYWy8nLw">source video</a>.</p>
+  </div>
+</footer>
+<script>
+  function mark(btn, label) {
+    btn.textContent = label;
+    btn.classList.add("done");
+    setTimeout(function () {
+      btn.textContent = "Copy";
+      btn.classList.remove("done");
+    }, 1600);
+  }
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", async function () {
+      var node = document.getElementById(btn.getAttribute("data-target"));
+      var text = node.innerText.replace(/\n$/, "");
+      try {
+        await navigator.clipboard.writeText(text);
+        mark(btn, "Copied");
+        return;
+      } catch (err) {}
+      var range = document.createRange();
+      range.selectNodeContents(node);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) {}
+      mark(btn, ok ? "Copied" : "Selected");
+    });
+  });
+</script>
+</body>
+</html>

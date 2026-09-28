@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reef Glass</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{display:block;width:100%;height:100%}</style>
+</head><body>
+<canvas id="c"></canvas>
+<script>
+const canvas=document.getElementById("c");
+const gl=canvas.getContext("webgl2",{antialias:false});
+const COLS=96, ROWS=54, N=COLS*ROWS;
+const vs=`#version 300 es
+layout(location=0) in vec2 corner;
+layout(location=1) in vec2 origin;
+layout(location=2) in float seed;
+uniform float time;
+out vec3 vCol;
+float hash(float n){ return fract(sin(n*41.3)*43758.5453); }
+void main(){
+  float phase=mod(time,80.0)/80.0;
+  float bleach=smoothstep(0.2,0.45,phase)*(1.0-smoothstep(0.62,0.85,phase));
+  vec3 water=vec3(0.05,0.25,0.38);
+  vec3 col=water;
+  float coral=0.0;
+  for(int i=0;i<5;i++){
+    float fi=float(i);
+    vec2 base=vec2(0.18+fi*0.15, 0.78);
+    vec2 tip=base+vec2(sin(fi)*0.04, -0.28-0.05*fi);
+    float d=abs((origin.x-base.x)*(tip.y-base.y)-(origin.y-base.y)*(tip.x-base.x))/length(tip-base);
+    float along=dot(origin-base, tip-base)/dot(tip-base,tip-base);
+    coral=max(coral, step(0.0,along)*step(along,1.0)*smoothstep(0.012,0.0,d));
+  }
+  vec3 coralCol=mix(vec3(0.95,0.45,0.35), vec3(0.85,0.82,0.75), bleach);
+  col=mix(col, coralCol, coral);
+  vec2 fish=vec2(fract(0.1+phase*1.3), 0.42+0.05*sin(phase*20.0));
+  col=mix(col, vec3(0.2,0.75,0.45), smoothstep(0.02,0.0,length(origin-fish)));
+  vec2 turtle=vec2(fract(0.8-phase*0.6), 0.35);
+  col=mix(col, vec3(0.25,0.45,0.28), smoothstep(0.035,0.0,length((origin-turtle)*vec2(1.0,1.6))));
+  float burst=abs(sin(phase*9.0));
+  vec2 scatter=(vec2(hash(seed),hash(seed+2.0))-0.5)*burst*0.06;
+  vec2 pos=origin+scatter+corner/vec2(float(${COLS}), float(${ROWS}));
+  vec2 clip=pos*2.0-1.0; clip.y=-clip.y;
+  gl_Position=vec4(clip,0.0,1.0);
+  vCol=col;
+}`;
+const fs=`#version 300 es
+precision mediump float; in vec3 vCol; out vec4 o; void main(){o=vec4(vCol,1.0);} `;
+function sh(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;}
+const prog=gl.createProgram(); gl.attachShader(prog,sh(gl.VERTEX_SHADER,vs)); gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,fs)); gl.linkProgram(prog); if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog)); gl.useProgram(prog);
+const corners=new Float32Array([0,0,1,0,0,1,0,1,1,0,1,1]);
+const origins=new Float32Array(N*2), seeds=new Float32Array(N);
+for(let i=0;i<N;i++){origins[i*2]=(i%COLS)/COLS; origins[i*2+1]=(i/COLS|0)/ROWS; seeds[i]=i+9;}
+function buf(loc,data,size,div){const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,size,gl.FLOAT,false,0,0);gl.vertexAttribDivisor(loc,div);}
+buf(0,corners,2,0); buf(1,origins,2,1); buf(2,seeds,1,1);
+const uTime=gl.getUniformLocation(prog,"time"); const t0=performance.now();
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;gl.viewport(0,0,canvas.width,canvas.height);} addEventListener("resize",resize); resize();
+function frame(now){gl.uniform1f(uTime,(now-t0)/1000); gl.drawArraysInstanced(gl.TRIANGLES,0,6,N); requestAnimationFrame(frame);} requestAnimationFrame(frame);
+</script></body></html>

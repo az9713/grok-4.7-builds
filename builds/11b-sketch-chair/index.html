@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Kitchen chair</title>
+<style>html,body{margin:0;height:100%;background:#1a1612;color:#f3ecdf;font:16px Georgia,serif}
+canvas{background:#f3ecdf url("sketch/chair.jpg") center/contain no-repeat;display:block;margin:12px auto}
+#ui{padding:8px 16px} button,input{font:inherit}</style></head>
+<body><div id="ui">Kitchen chair · mass <input id="mass" type="range" min="0.2" max="3" step="0.1" value="1"> friction <input id="fr" type="range" min="0.9" max="0.999" step="0.001" value="0.98">
+<button id="pin">Remove the pin</button> <span id="msg">The pin is in. It holds.</span></div>
+<canvas id="c" width="900" height="600"></canvas>
+<script>
+const PTS=[{"x": 200, "y": 420, "pin": true}, {"x": 200, "y": 160}, {"x": 460, "y": 160}, {"x": 460, "y": 420}, {"x": 250, "y": 280}, {"x": 410, "y": 280}], LINKS=[[0, 1], [1, 2], [2, 3], [0, 4], [4, 5], [5, 3], [1, 4]];
+const c=document.getElementById("c"), g=c.getContext("2d");
+let mass=1, fr=0.98, pinned=true;
+document.getElementById("mass").oninput=e=>mass=+e.target.value;
+document.getElementById("fr").oninput=e=>fr=+e.target.value;
+document.getElementById("pin").onclick=()=>{ pinned=false; document.getElementById("msg").textContent="The pin is out. The fall comes from the solver."; };
+const pts=PTS.map(p=>({...p, ox:p.x, oy:p.y}));
+function step(){
+  pts.forEach(p=>{
+    if(p.pin && pinned) return;
+    const vx=(p.x-p.ox)*fr, vy=(p.y-p.oy)*fr;
+    p.ox=p.x; p.oy=p.y; p.x+=vx; p.y+=vy+0.35*mass;
+    if(p.y>560){ p.y=560; p.oy=p.y; }
+  });
+  for(let k=0;k<6;k++) LINKS.forEach(([i,j])=>{
+    const a=pts[i], b=pts[j];
+    let dx=b.x-a.x, dy=b.y-a.y; const d=Math.hypot(dx,dy)||1;
+    const rest=a.rest||Math.hypot(PTS[j].x-PTS[i].x, PTS[j].y-PTS[i].y);
+    const diff=(d-rest)/d*0.5;
+    if(!(a.pin&&pinned)){ a.x+=dx*diff; a.y+=dy*diff; }
+    if(!(b.pin&&pinned)){ b.x-=dx*diff; b.y-=dy*diff; }
+  });
+}
+function frame(){
+  step();
+  g.clearRect(0,0,900,600);
+  g.strokeStyle="#1a1612"; g.lineWidth=3;
+  LINKS.forEach(([i,j])=>{ g.beginPath(); g.moveTo(pts[i].x,pts[i].y); g.lineTo(pts[j].x,pts[j].y); g.stroke(); });
+  pts.forEach(p=>{ g.fillStyle=p.pin?"#8f2d14":"#1a1612"; g.beginPath(); g.arc(p.x,p.y,p.pin?7:4,0,7); g.fill(); });
+  requestAnimationFrame(frame);
+}
+frame();
+</script></body></html>

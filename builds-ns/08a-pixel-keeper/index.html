@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Pier Keeper</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #05070c; overflow: hidden; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+         font: 12px/1 ui-monospace, Consolas, monospace; color: #6a7884; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  #state span { padding: 0 6px; }
+  #state span.on { color: #f0d7a0; }
+</style>
+</head>
+<body>
+<canvas id="c" width="256" height="144"></canvas>
+<div id="state"><span data-s="idle">idle</span><span data-s="charge">lantern</span><span data-s="beam">beam</span></div>
+<script>
+"use strict";
+const PAL = [
+  "#05070c", "#0c1424", "#142033", "#1c3048", "#27445f", "#3a5a72",
+  "#0e2433", "#163044", "#1a3a4a", "#c9b48a", "#f0d7a0", "#fff4d2",
+  "#8a7a62", "#5c4c38", "#3a2e24", "#6e8ea0", "#c8d0d4", "#1a1c22",
+  "#d8c4a8", "#f2e6d0", "#2a241c", "#e8eef2", "#9aa4ae", "#4a5c68"
+];
+const RGB = PAL.map(h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16)));
+const W = 256, H = 144, T = 255;
+const fb = new Uint8Array(W * H);
+const cv = document.getElementById("c");
+const ctx = cv.getContext("2d");
+const img = ctx.createImageData(W, H);
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => (v + 0.5) / 16);
+const bayer = (x, y) => BAYER[(y & 3) * 4 + (x & 3)];
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+const hash = (x, y) => { let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+
+const WATER = 96, DECK = 86;
+const bg = new Uint8Array(W * H);
+const stars = [];
+const ripples = [];
+
+function buildBackground() {
+  const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < W && y < H) bg[y * W + x] = c; };
+  const stamp = (g, x0, y0, map) => {
+    for (let y = 0; y < g.length; y++) for (let x = 0; x < g[y].length; x++) {
+      const ch = g[y][x]; if (ch === ".") continue;
+      put(x0 + x, y0 + y, map[ch] === undefined ? +ch : map[ch]);
+    }
+  };
+  const bands = [1, 2, 3, 4, 5];
+  for (let y = 0; y < WATER; y++) {
+    const f = Math.min(1, y / 88) * (bands.length - 1);
+    const i = Math.floor(f), frac = f - i;
+    for (let x = 0; x < W; x++) {
+      const c = (frac > 0.55 && bayer(x, y) < (frac - 0.55) / 0.45) ? bands[Math.min(i + 1, 4)] : bands[i];
+      bg[y * W + x] = c;
+    }
+  }
+  const mx = 214, my = 28, mr = 14;
+  for (let y = my - mr - 7; y <= my + mr + 7; y++) for (let x = mx - mr - 7; x <= mx + mr + 7; x++) {
+    const d = Math.hypot(x + 0.5 - mx, y + 0.5 - my);
+    if (d > mr && d < mr + 6) {
+      const s = 1 - (d - mr) / 6;
+      if (bayer(x, y) < s * 0.5) put(x, y, Math.min(5, (bg[y * W + x] || 1) + 1));
+    }
+  }
+  for (let y = my - mr; y <= my + mr; y++) for (let x = mx - mr; x <= mx + mr; x++) {
+    if (Math.hypot(x + 0.5 - mx, y + 0.5 - my) <= mr) {
+      put(x, y, Math.hypot(x - (mx + 4), y - (my - 4)) > mr ? 22 : 21);
+    }
+  }
+  const craters = [[-5, -3, 2.4], [4, 5, 3.0], [6, -5, 1.6], [-2, 7, 1.8], [1, -1, 1.2]];
+  for (const [cx, cy, r] of craters) for (let y = -5; y <= 5; y++) for (let x = -5; x <= 5; x++) {
+    if (Math.hypot(x, y) <= r) put(mx + cx + x, my + cy + y, 22);
+  }
+  const r = rng(11);
+  for (let n = 0; n < 72; n++) {
+    const x = Math.floor(r() * W), y = Math.floor(r() * 72);
+    if (Math.hypot(x - mx, y - my) < mr + 9) continue;
+    stars.push({ x, y, big: r() < 0.11, phase: Math.floor(r() * 24), c: r() < 0.5 ? 21 : 22 });
+  }
+  for (let x = 0; x < W; x++) {
+    const h = 76 + Math.round(2.2 * Math.sin(x * 0.05) + 1.4 * Math.sin(x * 0.13) + 0.8 * Math.sin(x * 0.31));
+    for (let y = h; y < WATER; y++) put(x, y, 2);
+  }
+  for (let y = 58; y < 80; y++) for (let x = 14; x < 50; x++) put(x, y, 3);
+  for (let x = 12; x < 52; x++) put(x, 56, 4), put(x, 57, 3);
+  for (let x = 16; x < 48; x += 6) for (let y = 52; y < 56; y++) put(x, y, 3), put(x + 1, y, 3);
+  put(28, 66, 10); put(29, 66, 10); put(28, 67, 9); put(29, 67, 9);
+  put(38, 70, 10); put(39, 70, 9);
+  for (let y = WATER; y < H; y++) {
+    const f = (y - WATER) / (H - WATER);
+    for (let x = 0; x < W; x++) {
+      const wave = Math.sin(x * 0.17 + y * 0.41) * 0.5 + 0.5;
+      let c = f < 0.22 ? 8 : f < 0.5 ? 7 : 6;
+      if (bayer(x, y) < wave * 0.32) c = Math.min(8, c + 1);
+      if (hash(x, y * 3) < 0.035) c = 6;
+      bg[y * W + x] = c;
+    }
+  }
+  const plank = (x0, y0, w, h, seed) => {
+    const base = hash(seed, 3) < 0.4 ? 13 : 12;
+    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+      let c = base;
+      if (y === y0 || x === x0) c = 12;
+      if (y === y0 + h - 1 || x === x0 + w - 1) c = 14;
+      const n = hash(x * 3 + seed, y * 7);
+      if (c === base && n < 0.07) c = 14;
+      if (c === base && n > 0.96) c = 12;
+      if (hash(x + seed, y) < 0.025) c = 20;
+      put(x, y, c);
+    }
+    if (hash(seed, 9) < 0.32) {
+      let cx = x0 + 2 + Math.floor(hash(seed, 11) * (w - 5)), cy = y0 + 1;
+      while (cy < y0 + h - 1) { put(cx, cy, 20); cy++; cx += hash(seed, cy) < 0.5 ? 0 : (hash(cy, seed) < 0.5 ? 1 : -1); }
+    }
+    if (hash(seed, 21) < 0.55) { put(x0 + 2, y0 + 2, 20); put(x0 + w - 3, y0 + 2, 20); }
+  };
+  for (let y = DECK; y < H; y++) for (let x = 0; x < W; x++) put(x, y, 14);
+  for (let x = -8, k = 0; x < W; x += 12, k++) plank(x + 1, DECK, 11, 4, 800 + k);
+  for (let x = 0; x < W; x++) put(x, DECK, 12);
+  for (let row = 0, y = DECK + 5; y < H; row++, y += 7) {
+    const off = row % 2 ? -9 : 0;
+    for (let x = off, k = 0; x < W; x += 18, k++) plank(x + 1, y, 17, 6, row * 113 + k * 9);
+  }
+  const post = (x0, top) => {
+    for (let y = top; y < H; y++) {
+      put(x0, y, 14); put(x0 + 1, y, 13); put(x0 + 2, y, 12); put(x0 + 3, y, 14);
+      if (hash(x0, y) < 0.1) put(x0 + 1, y, 20);
+    }
+    plank(x0 - 1, top, 6, 3, x0 * 17);
+  };
+  for (const x of [8, 40, 72, 104, 136, 168, 200, 232]) post(x, 82);
+  for (let y = 96; y < 134; y++) { put(170, y, 23); put(176, y, 23); if (y % 6 === 0) for (let x = 170; x <= 176; x++) put(x, y, 23); }
+  const MW = { n: 13, s: 12, b: 14, c: 23, k: 20, a: 9, y: 10, o: 11, w: 21, r: 22, m: 15, d: 16, h: 18 };
+  stamp([
+    "....ssssssss....",
+    "...snnnnnnnns...",
+    "..sbbbbbbbbbbs..",
+    ".sbbbbbbbbbbbbs.",
+    "skkkkkkkkkkkkkks",
+    ".bbbbbbbbbbbbbb.",
+  ], 186, 70, MW);
+  stamp([
+    "...c...",
+    "..csc..",
+    ".csssc.",
+    "csssssc",
+    "c.sss.c",
+    "c..k..c",
+  ], 194, 62, MW);
+  stamp([
+    ".ssss.",
+    "snnnns",
+    "snbnsn",
+    "snnnns",
+    "sbbbbs",
+    ".kkkk.",
+  ], 4, DECK - 14, MW);
+  stamp([
+    ".ssss.",
+    "snansn",
+    "snyaas",
+    "snoons",
+    "sbbbbs",
+    "..nn..",
+  ], 28, DECK - 16, MW);
+  stamp([
+    "sssssss",
+    "snnnnns",
+    "snbbnns",
+    "snnnnns",
+    "sbbbbbs",
+    "kk...kk",
+  ], 112, DECK - 12, MW);
+  stamp([
+    "nn.nn.nn",
+    ".n.nn.n.",
+    "nn.nn.nn",
+    ".n....n.",
+  ], 56, DECK - 5, MW);
+  stamp([
+    "..d..",
+    ".dmd.",
+    "dmmmd",
+    ".mhm.",
+    "..m..",
+  ], 88, 22, MW);
+  stamp([
+    "w....w",
+    ".w..w.",
+    "..ww..",
+    ".w..w.",
+  ], 120, 16, MW);
+  stamp([
+    "..w..",
+    ".www.",
+    "w.w.w",
+  ], 150, 26, MW);
+  stamp([
+    ".ssssss.",
+    "snnnnns.",
+    "snbbbns.",
+    "snnnnns.",
+    "sbbbbbs.",
+  ], 220, DECK - 10, MW);
+  for (let a = 0; a < 22; a++) {
+    const ang = a / 22 * Math.PI * 2;
+    put(50 + Math.round(Math.cos(ang) * 6), 100 + Math.round(Math.sin(ang) * 3), 12);
+    put(50 + Math.round(Math.cos(ang) * 4), 100 + Math.round(Math.sin(ang) * 2), 13);
+    put(50 + Math.round(Math.cos(ang) * 2), 100 + Math.round(Math.sin(ang) * 1), 20);
+  }
+  for (let y = 88; y < 96; y++) for (let x = 208; x < 216; x++) put(x, y, 23);
+  put(207, 87, 22); put(216, 87, 22); for (let x = 207; x <= 216; x++) put(x, 86, 22);
+  for (let n = 0; n < 22; n++) ripples.push({ x: 12 + Math.floor(r() * 240), y: 100 + Math.floor(r() * 38), ph: Math.floor(r() * 16) });
+  stamp([
+    "......mmmsss......",
+    "....mmnnnnnns.....",
+    "...mbbbbbbbbbm....",
+    "..mbbbbbbbbbbbm...",
+    ".mkkkkkkkkkkkkkm..",
+    "mmbbbbbbbbbbbbbmm.",
+    ".dddddddddddddd...",
+  ], 176, 74, MW);
+  stamp([
+    "..c..c..c..",
+    ".c.c.c.c.c.",
+    "c..c..c..c.",
+    ".n.n.n.n.n.",
+  ], 60, 78, MW);
+  stamp([
+    ".sss.",
+    "syyys",
+    "sooos",
+    "srrrs",
+    ".nnn.",
+    "..d..",
+  ], 96, DECK - 20, MW);
+  stamp([
+    "h.s.h",
+    ".sss.",
+    "snhns",
+    ".sss.",
+    "..d..",
+  ], 142, 48, MW);
+  stamp([
+    "...s...",
+    "..sns..",
+    ".snnns.",
+    "snbbbns",
+    ".sbbbs.",
+  ], 234, 78, MW);
+  for (let x = 10; x < 250; x += 18) {
+    plank(x, 108, 5, 3, 1100 + x);
+    put(x + 2, 107, 14); put(x + 2, 106, 20);
+  }
+  for (let i = 0; i < 9; i++) {
+    const fx = 178 + (i % 5) * 5, fy = 118 + ((i / 5) | 0) * 4;
+    put(fx, fy, 18); put(fx + 1, fy, 9); put(fx, fy + 1, 13);
+  }
+  const DOCK = [
+    "ssssssssssss",
+    "snnnnnnnnnns",
+    "snbbbbbbbbns",
+    "snnnnnnnnnns",
+    "sbbbbbbbbbbs",
+    "kkkkkkkkkkkk",
+  ];
+  const LINE = [
+    "oooooooooooooooo",
+    "o.o.o.o.o.o.o.o.",
+  ];
+  stamp(DOCK, 70, DECK - 12, MW);
+  stamp(LINE, 80, 70, MW);
+  stamp(LINE, 80, 72, MW);
+  const SHED = [
+    "...ssssssssss...",
+    "..snnnnnnnnns...",
+    ".snbbbbbbbbbns..",
+    "snbbbbbbbbbbbbs.",
+    "snnnnnnnnnnnnns",
+    "sbbbbbbbbbbbbbs",
+    "kkkkkkkkkkkkkkk",
+    "..n.n.n.n.n.n..",
+    "..n.n.n.n.n.n..",
+  ];
+  const BARREL = [
+    ".ssss.",
+    "snnnns",
+    "sbbbbs",
+    "snnnns",
+    "sbbbbs",
+    "snnnns",
+    ".kkkk.",
+  ];
+  stamp(SHED, 200, DECK - 18, MW);
+  stamp(BARREL, 48, DECK - 10, MW);
+  stamp(BARREL, 156, DECK - 10, MW);
+  const WINCH = [
+    "...ssss...",
+    "..snnnns..",
+    ".snbbbbns.",
+    "snbbbbbbns",
+    "snnnnnnnns",
+    ".sbbbbbbs.",
+    "..skkkks..",
+    "...nnnn...",
+    "....dd....",
+  ];
+  stamp(WINCH, 128, DECK - 16, MW);
+  const GULLS = [
+    "w..w....w..w",
+    ".ww......ww.",
+    "..w......w..",
+    "w..w....w..w",
+  ];
+  stamp(GULLS, 100, 14, MW);
+  stamp(GULLS, 160, 20, MW);
+  const LANTERNS = [
+    ".nnn...nnn.",
+    "nyyyn.nyyyn",
+    "nooon.nooon",
+    ".nnn...nnn.",
+    "..d.....d..",
+  ];
+  stamp(LANTERNS, 88, DECK - 14, MW);
+  const CLEAT = ["sss", "nnn", "bbb"];
+  stamp(CLEAT, 20, DECK - 4, MW);
+  stamp(CLEAT, 240, DECK - 4, MW);
+  const PYLON = [
+    "..ss..",
+    ".snns.",
+    "snbbns",
+    "snbbns",
+    "snnnns",
+    ".sdds.",
+    "..dd..",
+    "..nn..",
+    "..nn..",
+  ];
+  stamp(PYLON, 64, 70, MW);
+  stamp(PYLON, 176, 72, MW);
+  const BOAT2 = [
+    "......ssssss......",
+    "....ssnnnnnnss....",
+    "...sbbbbbbbbbbs...",
+    "..sbbbbbbbbbbbbs..",
+    ".skkkkkkkkkkkkks.",
+    "ssbbbbbbbbbbbbbss",
+    ".dddddddddddddd..",
+  ];
+  stamp(BOAT2, 198, 78, MW);
+  const DOCK2 = [
+    "ssssssssssssssss",
+    "snnnnnnnnnnnnnns",
+    "snbbbbbbbbbbbbns",
+    "snnnnnnnnnnnnnns",
+    "sbbbbbbbbbbbbbbs",
+    "kkkkkkkkkkkkkkkk",
+  ];
+  stamp(DOCK2, 84, DECK - 8, MW);
+}
+
+const K = { k: 17, a: 15, b: 16, s: 18, h: 19, e: 20, w: 12, d: 14, n: 9, l: 10, z: 11, o: 23, m: 13, c: 22, p: 4 };
+const BODY = [
+  ".....kkkkkk......",
+  "....kbbbbbbk.....",
+  "...kbbbbbbbbk....",
+  "..kbbbbbbbbbbk...",
+  "..kbbaaabbbbbk...",
+  ".kbbbaaabbbbbk...",
+  ".kbbbbaaabbbbk...",
+  "..kbbbaaaaabk....",
+  "...kbbbabbk......",
+  "....kkkkkk.......",
+  ".....k..k........",
+  "....kk..kk.......",
+  "...kd....dk......",
+  "...dd....dd......",
+];
+const COAT = [
+  "..kkkkkkkk..",
+  ".kbbbbbbbbk.",
+  "kbbbbbbbbbbk",
+  "kbbaaabbabbk",
+  "kbbbaaaabbbk",
+  "mbbbaaaabbbm",
+];
+const HEAD = [
+  "..hhhhh..",
+  ".hhhhhhh.",
+  ".hhheehh.",
+  ".hhessehh",
+  ".hhssshhh",
+  "..hhhhhh.",
+  "...hhh...",
+];
+const CAP = [
+  ".ddddddd.",
+  "ddddddddd",
+  ".ddddddd.",
+  "..ddddd..",
+];
+const BEARD = [
+  ".sss.",
+  "sssss",
+  ".s.s.",
+];
+const SCARF = [
+  "..ll..",
+  ".lzzl.",
+  "lzzzzm",
+  ".m.m.m",
+];
+const ARM_DOWN = [
+  "k",
+  "b",
+  "b",
+  "b",
+  "s",
+  "s",
+];
+const ARM_MID = [
+  "..k",
+  ".bk",
+  "bk.",
+  "b..",
+  "s..",
+];
+const ARM_UP = [
+  "...k",
+  "..bk",
+  ".bk.",
+  "bk..",
+  "s...",
+];
+const ARM_OUT = [
+  "kk......",
+  "bbkk....",
+  ".bbkk...",
+  "..mmbs..",
+  "....ss..",
+];
+const LANTERN = [
+  ".nnn.",
+  "nzzzn",
+  "nllln",
+  "nllln",
+  "nzzzn",
+  ".nnn.",
+  "..d..",
+];
+const LAMP_HOT = [
+  ".nnn.",
+  "nzzzn",
+  "nzzzn",
+  "nllln",
+  "nzzzn",
+  ".nnn.",
+  "..d..",
+];
+const BOOT = [
+  "dd",
+  "dd",
+  "ww",
+];
+const BUCKET = [
+  ".mmm.",
+  "mdddm",
+  "mwwwm",
+  "mdddm",
+];
+const PIPE = [
+  "nn..",
+  ".nmm",
+  "..m.",
+];
+const FISH = [
+  "..sss",
+  ".sbbn",
+  "sbbbn",
+  ".sbbn",
+  "..sss",
+];
+const NET = [
+  "o.o.o.o",
+  ".o.o.o.",
+  "o.o.o.o",
+  ".o.o.o.",
+];
+const COAT_OPEN = [
+  "k......k",
+  "bk....kb",
+  "bbk..kbb",
+  "bbbkkbbb",
+];
+const GLOVE = [
+  "ss",
+  "ss",
+  "nn",
+];
+const CRATE_STACK = [
+  "mmmmmmmm",
+  "mddddddm",
+  "mdwwwwdm",
+  "mddddddm",
+  "mmmmmmmm",
+  "mddddddm",
+  "mdwwwwdm",
+  "mddddddm",
+  "mmmmmmmm",
+];
+const HANG_LAMP = [
+  "..o..",
+  "..o..",
+  ".nnn.",
+  "nllln",
+  "nzzzn",
+  ".nnn.",
+];
+const RAIL = [
+  "mmmmmmmmmmmmmmmm",
+  "m..............m",
+  "mmmmmmmmmmmmmmmm",
+];
+const PIER_EDGE = [
+  "mmmmmmmmmmmmmmmmmmmm",
+  "mddddddddddddddddddm",
+  "mdwwdwwdwwdwwdwwdwdm",
+  "mddddddddddddddddddm",
+  "mmmmmmmmmmmmmmmmmmmm",
+];
+const HOOKS = [
+  "o.o.o.o.o.o",
+  ".n.n.n.n.n.",
+  "s.s.s.s.s.s",
+];
+
+const FPS = 12;
+const IDLE_END = 48, CHARGE_END = 72, BEAM_END = 104, LOOP = 120;
+const BREATH = [0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 1, 1, 0, 0, 1, 0];
+const SHAKE = [[1,0],[-1,1],[0,-1],[1,1],[-1,0],[0,1],[1,-1],[-1,0],[0,0],[1,0],[-1,1],[0,-1]];
+const FLICKER = [1.0, 0.82, 0.95, 0.7, 1.0, 0.88, 0.76, 0.94];
+
+function pose(t) {
+  const p = { phase: "idle", breath: 0, blink: 0, arm: 0, glow: 0, sweep: -0.55, light: 0, bob: 0, mote: false, beam: false, shake: [0, 0] };
+  if (t < IDLE_END) {
+    p.breath = BREATH[t % 16];
+    p.bob = p.breath === 2 ? -1 : 0;
+    const b = t % 48;
+    if (b === 18 || b === 22) p.blink = 1;
+    else if (b === 19 || b === 20 || b === 21) p.blink = 2;
+    if (b === 36) p.blink = 1; else if (b === 37) p.blink = 2;
+    p.glow = 0.16 + 0.08 * Math.sin(t * 0.4);
+  } else if (t < CHARGE_END) {
+    const c = t - IDLE_END;
+    p.phase = "charge";
+    p.breath = c < 8 ? 1 : 2;
+    p.arm = c < 6 ? 0 : c < 14 ? 1 : 2;
+    const G = [0.15,0.2,0.28,0.34,0.42,0.5,0.58,0.66,0.74,0.82,0.88,0.92,0.96,1,1,1,1,1,0.94,1,1,1,1,1];
+    p.glow = G[Math.min(c, G.length - 1)];
+    p.bob = -1;
+    p.mote = c > 8 && c % 3 === 0;
+    if (c === 4 || c === 5 || c >= 18) p.blink = c >= 18 ? 1 : 2;
+  } else if (t < BEAM_END) {
+    const f = t - CHARGE_END;
+    p.phase = "beam";
+    p.arm = 2;
+    p.glow = 1;
+    p.beam = f < 28;
+    p.light = f < 4 ? f / 4 : f > 26 ? (32 - f) / 6 : FLICKER[f % FLICKER.length];
+    p.sweep = -0.62 + (f / 32) * 1.15;
+    p.bob = f % 8 < 4 ? -1 : 0;
+    p.mote = f % 3 === 0;
+    const amp = f < 4 ? 1 : f < 22 ? 0.5 : 0;
+    const s = SHAKE[f % SHAKE.length];
+    p.shake = amp === 1 ? s : amp ? [Math.sign(s[0]) * (f % 2), 0] : [0, 0];
+    if (f === 14 || f === 15) p.blink = 1;
+  } else {
+    const r = t - BEAM_END;
+    p.arm = r < 4 ? 2 : r < 8 ? 1 : 0;
+    p.glow = Math.max(0.12, 1 - r / 10);
+    p.breath = r > 8 ? 1 : 0;
+    p.blink = r === 10 ? 1 : r === 11 ? 2 : 0;
+    p.light = Math.max(0, 0.4 - r * 0.08);
+    p.sweep = 0.5;
+  }
+  return p;
+}
+
+const DW = 56, DH = 58;
+const dbuf = new Uint8Array(DW * DH);
+const DX = 74, DY = DECK - 42;
+function dput(x, y, c) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < DW && y < DH && c !== undefined) dbuf[y * DW + x] = c; }
+function drawGrid(g, x0, y0) {
+  for (let y = 0; y < g.length; y++) for (let x = 0; x < g[y].length; x++) {
+    const ch = g[y][x]; if (ch === ".") continue;
+    dput(x0 + x, y0 + y, K[ch]);
+  }
+}
+function disc(cx, cy, r, c) {
+  for (let y = Math.floor(cy - r); y <= Math.ceil(cy + r); y++)
+    for (let x = Math.floor(cx - r); x <= Math.ceil(cx + r); x++)
+      if ((x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= r * r) dput(x, y, c);
+}
+function drawKeeper(p) {
+  dbuf.fill(T);
+  const lift = p.breath >= 2 ? 1 : 0;
+  const by = 30 - lift + (p.bob < 0 ? -1 : 0);
+  drawGrid(BODY, 14, by);
+  drawGrid(COAT, 16, by + 1);
+  drawGrid(BOOT, 18, by + 13);
+  drawGrid(BOOT, 25, by + 13);
+  drawGrid(HEAD, 17, by - 8);
+  drawGrid(CAP, 17, by - 12);
+  drawGrid(BEARD, 19, by - 2);
+  drawGrid(SCARF, 18, by);
+  drawGrid(PIPE, 25, by - 3);
+  drawGrid(BUCKET, 6, by + 8);
+  drawGrid(NET, 2, by + 2);
+  drawGrid(FISH, 3, by - 2);
+  drawGrid(COAT_OPEN, 15, by + 3);
+  drawGrid(GLOVE, 31, by + 8);
+  drawGrid(CRATE_STACK, 38, by + 4);
+  drawGrid(HANG_LAMP, 46, by - 8);
+  drawGrid(RAIL, 0, by + 14);
+  drawGrid(PIER_EDGE, 38, by + 12);
+  drawGrid(HOOKS, 8, by - 6);
+  if (p.breath >= 2) for (let y = 3; y < 8; y++) for (let x = 4; x < 12; x++) {
+    const c = dbuf[(by + y) * DW + (14 + x)];
+    if (c === 16 || c === 15) dput(14 + x, by + y - 1, c);
+  }
+  if (p.blink === 1) { dput(21, by - 5, 15); dput(22, by - 5, 15); }
+  if (p.blink === 2) { dput(21, by - 5, 16); dput(22, by - 5, 16); dput(21, by - 4, 17); dput(22, by - 4, 17); }
+  let lx, ly;
+  if (p.arm === 0) {
+    drawGrid(ARM_DOWN, 30, by + 3);
+    drawGrid(LANTERN, 29, by + 8);
+    lx = 31; ly = by + 10;
+  } else if (p.arm === 1) {
+    drawGrid(ARM_MID, 29, by);
+    drawGrid(LANTERN, 32, by + 2);
+    lx = 34; ly = by + 4;
+  } else {
+    drawGrid(ARM_UP, 30, by - 3);
+    drawGrid(ARM_OUT, 28, by + 1);
+    drawGrid(p.glow > 0.7 ? LAMP_HOT : LANTERN, 34, by - 5);
+    lx = 36; ly = by - 3;
+  }
+  if (p.glow > 0) {
+    const R = 2 + p.glow * 6;
+    for (let y = 0; y < DH; y++) for (let x = 0; x < DW; x++) {
+      const c = dbuf[y * DW + x]; if (c === T) continue;
+      const d = Math.hypot(x - lx, y - ly); if (d > R) continue;
+      const I = p.glow * (1 - d / R) * 1.5, b = bayer(x + DX, y + DY);
+      if (I > b + 0.65) dbuf[y * DW + x] = 11;
+      else if (I > b + 0.3) dbuf[y * DW + x] = c === 9 || c === 18 ? 10 : 9;
+      else if (I > b) dbuf[y * DW + x] = c === 17 ? 15 : 10;
+    }
+  }
+  const out = [];
+  for (let y = 0; y < DH; y++) for (let x = 0; x < DW; x++) {
+    if (dbuf[y * DW + x] !== T) continue;
+    if ((x > 0 && dbuf[y * DW + x - 1] !== T && dbuf[y * DW + x - 1] !== 0) ||
+        (x < DW - 1 && dbuf[y * DW + x + 1] !== T && dbuf[y * DW + x + 1] !== 0) ||
+        (y > 0 && dbuf[(y - 1) * DW + x] !== T && dbuf[(y - 1) * DW + x] !== 0) ||
+        (y < DH - 1 && dbuf[(y + 1) * DW + x] !== T && dbuf[(y + 1) * DW + x] !== 0)) out.push(y * DW + x);
+  }
+  for (const i of out) dbuf[i] = 0;
+  return { lx: DX + lx, ly: DY + ly };
+}
+
+let parts = [];
+let R = rng(3);
+function stepParticles(p, m) {
+  for (const q of parts) { q.age++; q.x += q.vx; q.y += q.vy; if (q.glint) { q.vy += 0.04; } else { q.vy -= 0.03; q.vx *= 0.97; } }
+  parts = parts.filter(q => q.age < q.life && q.y > -4 && q.y < H + 4 && q.x < W + 6);
+  if (p.mote) parts.push({ x: m.lx + R() * 6 - 3, y: m.ly - 2, vx: (R() - 0.5) * 0.8, vy: -0.4 - R() * 0.5, age: 0, life: 14 + (R() * 10 | 0), hot: R() < 0.4 });
+  if (p.beam && p.light > 0.35) {
+    const ang = p.sweep;
+    for (let i = 0; i < 6; i++) {
+      const dist = 10 + R() * 90, lead = R();
+      parts.push({ x: m.lx + Math.cos(ang) * dist * lead, y: m.ly + Math.sin(ang) * dist * 0.55 * lead + 4,
+        vx: Math.cos(ang) * (1.2 + R()), vy: 0.4 + R() * 0.8, age: 0, life: 10 + (R() * 8 | 0), glint: true, hot: R() < 0.3 });
+    }
+  }
+}
+function plot(x, y, c) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H) fb[y * W + x] = c; }
+function drawBlob(x, y, s, c) {
+  x = Math.round(x); y = Math.round(y);
+  const shapes = { 1: ["#"], 2: ["##", "##"], 3: [".#.", "###", ".#."], 4: [".##.", "####", "####", ".##."] };
+  const g = shapes[s], o = s >> 1;
+  for (let j = 0; j < g.length; j++) for (let i = 0; i < g[j].length; i++)
+    if (g[j][i] === "#") plot(x + i - o, y + j - o, c);
+}
+
+function render(t) {
+  const p = pose(t);
+  fb.set(bg);
+  for (const s of stars) {
+    const k = (t + s.phase) % 24, i = s.y * W + s.x;
+    if (s.big && k < 18) {
+      fb[i] = 21;
+      if (k > 4 && k < 12) { if (s.x > 0) fb[i - 1] = 22; if (s.x < W - 1) fb[i + 1] = 22; if (s.y > 0) fb[i - W] = 22; if (s.y < H - 1) fb[i + W] = 22; }
+    } else if (!s.big && k !== 4 && k !== 5) fb[i] = s.c;
+  }
+  for (const rp of ripples) if ((t + rp.ph) % 16 < 3) plot(rp.x, rp.y, 5);
+  for (let y = WATER + 2; y < 88; y += 3) {
+    const off = Math.round(Math.sin(t * 0.15 + y) * 2);
+    for (let x = 0; x < W; x++) if (bayer(x, y) < 0.22) plot((x + off + W) % W, y, y % 2 ? 8 : 7);
+  }
+  const m = drawKeeper(p);
+  stepParticles(p, m);
+  if (p.light > 0) {
+    const ang = p.sweep;
+    for (let y = 40; y < 118; y++) for (let x = m.lx; x < W; x++) {
+      const dx = x - m.lx, dy = y - m.ly;
+      const a = Math.atan2(dy, dx);
+      const da = Math.abs(a - ang);
+      const span = 0.15 + (x - m.lx) * 0.00045;
+      if (da > span) continue;
+      const along = Math.hypot(dx, dy);
+      const I = p.light * (1 - da / span) * Math.max(0, 1 - along / 150);
+      if (I <= 0) continue;
+      const here = fb[y * W + x];
+      if (here >= 6 && here <= 8 && bayer(x, y) < I) fb[y * W + x] = I > 0.55 ? 11 : 10;
+      else if (here >= 12 && here <= 14 && I > 0.7 && bayer(x, y) < 0.45) fb[y * W + x] = 9;
+    }
+    const ex = m.lx + Math.cos(ang) * 86, ey = 102;
+    for (let y = 98; y < 134; y++) for (let x = ex - 14; x < ex + 22; x++) {
+      if (bayer(x, y) < p.light * 0.5 * (1 - (y - 98) / 36)) plot(x, y, y % 3 ? 10 : 11);
+    }
+  }
+  for (let y = 0; y < DH; y++) for (let x = 0; x < DW; x++) {
+    const c = dbuf[y * DW + x]; if (c === T) continue;
+    const sx = DX + x, sy = DY + y;
+    if (sx >= 0 && sy >= 0 && sx < W && sy < H) fb[sy * W + sx] = c;
+  }
+  for (const q of parts) {
+    if (q.age % 3 === 2 && !q.glint) continue;
+    const r = q.age / q.life;
+    if (q.glint) drawBlob(q.x, q.y, r < 0.3 ? 3 : 2, r < 0.25 ? 11 : r < 0.6 ? 10 : 9);
+    else plot(q.x, q.y, q.hot ? 11 : 10);
+  }
+  const [ox, oy] = p.shake;
+  const d = img.data;
+  for (let y = 0; y < H; y++) {
+    const yy = Math.min(H - 1, Math.max(0, y + oy));
+    for (let x = 0; x < W; x++) {
+      const xx = Math.min(W - 1, Math.max(0, x + ox));
+      const rgb = RGB[fb[yy * W + xx]], o = (y * W + x) * 4;
+      d[o] = rgb[0]; d[o + 1] = rgb[1]; d[o + 2] = rgb[2]; d[o + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return p;
+}
+
+function fit() {
+  const s = Math.max(1, Math.floor(Math.min(innerWidth / W, (innerHeight - 40) / H)));
+  cv.style.width = W * s + "px"; cv.style.height = H * s + "px";
+}
+addEventListener("resize", fit);
+fit();
+buildBackground();
+const labels = [...document.querySelectorAll("#state span")];
+let lastPhase = "";
+function showPhase(ph) {
+  if (ph === lastPhase) return; lastPhase = ph;
+  for (const l of labels) l.classList.toggle("on", l.dataset.s === ph);
+}
+const freeze = new URLSearchParams(location.search).get("frame");
+let tick = 0;
+if (freeze !== null) {
+  const N = Math.max(0, parseInt(freeze, 10) || 0);
+  let p;
+  for (let i = 0; i <= N; i++) p = render(i % LOOP);
+  showPhase(p.phase);
+} else {
+  const start = performance.now();
+  (function loop(now) {
+    const want = Math.floor((now - start) / (1000 / FPS));
+    while (tick <= want) { const p = render(tick % LOOP); showPhase(p.phase); tick++; }
+    requestAnimationFrame(loop);
+  })(start);
+}
+</script>
+</body>
+</html>

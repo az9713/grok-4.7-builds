@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hive</title>
+<style>
+html,body{margin:0;height:100%;background:#1a1408;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+button{position:fixed;left:16px;bottom:16px;background:#f3e2b0;border:0;padding:8px 14px;font:16px Georgia,serif;cursor:pointer}
+</style></head><body>
+<canvas id="c"></canvas><button id="play">Play</button>
+<script>
+const c=document.getElementById("c"), g=c.getContext("2d");
+const DURATION=90; let actx, playing=false, started=0;
+function fit(){c.width=innerWidth*devicePixelRatio;c.height=innerHeight*devicePixelRatio;g.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}
+addEventListener("resize",fit); fit();
+function tone(freq,when,dur,type,gain){
+  const o=actx.createOscillator(), a=actx.createGain();
+  o.type=type; o.frequency.setValueAtTime(freq,when); o.frequency.exponentialRampToValueAtTime(freq*1.04,when+dur);
+  a.gain.setValueAtTime(0.0001,when); a.gain.exponentialRampToValueAtTime(gain,when+0.05); a.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+  o.connect(a); a.connect(actx.destination); o.start(when); o.stop(when+dur+0.05);
+}
+function noise(when){
+  const o=actx.createOscillator(), a=actx.createGain();
+  o.type="square"; o.frequency.value=180;
+  a.gain.setValueAtTime(0.05,when); a.gain.exponentialRampToValueAtTime(0.0001,when+0.06);
+  o.connect(a); a.connect(actx.destination); o.start(when); o.stop(when+0.08);
+}
+function compose(){
+  const notes=[440,494,523,587,659];
+  for(let i=0;i<DURATION;i+=0.45){
+    tone(notes[(i*2|0)%notes.length], actx.currentTime+i, 0.4, "sawtooth", 0.03);
+    if(i%1.35<0.45) noise(actx.currentTime+i);
+  }
+}
+function hex(x,y,r){
+  g.beginPath();
+  for(let i=0;i<6;i++){
+    const a=Math.PI/6+i*Math.PI/3;
+    const px=x+Math.cos(a)*r, py=y+Math.sin(a)*r;
+    i?g.lineTo(px,py):g.moveTo(px,py);
+  }
+  g.closePath();
+}
+function draw(now){
+  const w=innerWidth,h=innerHeight,t=playing?Math.min(DURATION,(now-started)/1000):0;
+  const p=t/DURATION;
+  g.fillStyle="#24180a"; g.fillRect(0,0,w,h);
+  const r=18+p*10;
+  for(let row=-1;row<h/ (r*1.5)+2;row++){
+    for(let col=-1;col<w/(r*1.75)+2;col++){
+      const x=col*r*1.75+(row%2?r*0.87:0), y=row*r*1.5;
+      const fill=p>0.25 && ((col*3+row)%5) < p*6;
+      hex(x,y,r*0.92);
+      g.fillStyle=fill?"#e2b15a":"#3a2a14"; g.fill();
+      g.strokeStyle="#1a1008"; g.stroke();
+    }
+  }
+  const bx=w*0.45+Math.sin(t*3)*40, by=h*0.5+Math.cos(t*2)*24;
+  g.fillStyle="#f4e27a"; g.beginPath(); g.ellipse(bx,by,7,4,t,0,7); g.fill();
+  if(p>0.4){
+    g.strokeStyle="#f8e7a0"; g.lineWidth=2;
+    g.beginPath();
+    const dance=t*4;
+    g.moveTo(bx,by);
+    g.lineTo(bx+Math.cos(dance)*30, by+20);
+    g.lineTo(bx+Math.cos(dance)*30, by+50);
+    g.stroke();
+  }
+  if(p>0.55){
+    for(let i=0;i<12;i++){
+      const a=t*2+i;
+      g.fillStyle="rgba(255,220,120,0.7)";
+      g.fillRect(w*0.5+Math.cos(a)*80, h*0.35+Math.sin(a*1.3)*20, 3, 8);
+    }
+  }
+  if(p>0.75){
+    for(let i=0;i<24;i++){
+      const a=i/24*6.28+t*0.2;
+      const rad=60+ (i%5)*18;
+      g.fillStyle="#f6d56a";
+      g.fillRect(w*0.5+Math.cos(a)*rad, h*0.5+Math.sin(a)*rad*0.6, 4, 3);
+    }
+  }
+  g.fillStyle="#f8ecc8"; g.font="28px Georgia,serif";
+  g.fillText(p<0.25?"one bee": p<0.4?"the comb fills": p<0.55?"the waggle": p<0.75?"fanning":"scouts leave", 24, 46);
+  if(!playing||t<DURATION) requestAnimationFrame(draw);
+}
+document.getElementById("play").onclick=()=>{actx=new AudioContext(); compose(); playing=true; started=performance.now(); document.getElementById("play").remove();};
+requestAnimationFrame(draw);
+</script></body></html>

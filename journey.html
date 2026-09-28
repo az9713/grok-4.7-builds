@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How the forty-five builds were made</title>
+<meta name="description" content="The development journey for the forty-five north-star builds: what was kept from each Opus source, what changed, and what was not play-tested.">
+<style>
+  :root {
+    --paper: #f3ecdf;
+    --ink: #1a1612;
+    --muted: #5e564c;
+    --line: #d9d0c2;
+    --accent: #8f2d14;
+    --code: #efe6d6;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: "Segoe UI", system-ui, sans-serif;
+    --mono: Consolas, "Cascadia Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 19px/1.5 var(--serif); }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .wrap { width: min(880px, calc(100% - 40px)); margin: 0 auto; }
+  header.top { border-bottom: 1px solid var(--line); padding: 28px 0 32px; }
+  .kicker {
+    margin: 0 0 12px; font: 600 13px/1 var(--sans);
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent);
+  }
+  h1 {
+    margin: 0 0 14px; font-size: clamp(40px, 6vw, 60px);
+    line-height: 0.98; font-weight: 600; letter-spacing: -0.02em;
+  }
+  .lede { margin: 0; max-width: 40em; font-size: 22px; line-height: 1.35; }
+  nav.contents {
+    position: sticky; top: 0; z-index: 2;
+    background: color-mix(in srgb, var(--paper) 92%, white);
+    border-bottom: 1px solid var(--line);
+  }
+  nav.contents ul {
+    display: flex; flex-wrap: wrap; gap: 6px 16px;
+    margin: 0 auto; padding: 12px 0;
+    width: min(880px, calc(100% - 40px));
+    list-style: none; font: 14px/1.3 var(--sans);
+  }
+  nav.contents a { text-decoration: none; }
+  nav.contents a:hover { text-decoration: underline; }
+  main { padding: 8px 0 80px; }
+  h2 { margin: 2.2em 0 0.4em; font-size: 32px; line-height: 1.15; font-weight: 600; }
+  h3 { margin: 1.4em 0 0.25em; font-size: 22px; font-weight: 600; }
+  p { margin: 0.6em 0; }
+  .note { color: var(--muted); font: 15px/1.45 var(--sans); }
+  article.build {
+    margin: 14px 0 0; padding: 14px 0 4px;
+    border-top: 1px solid var(--line);
+  }
+  article.build h3 { margin-top: 0; }
+  code, .path { font-family: var(--mono); font-size: 0.86em; background: var(--code); padding: 0 0.25em; }
+  ol.steps { padding-left: 1.2em; }
+  ol.steps li { margin: 0.35em 0; }
+  footer { border-top: 1px solid var(--line); padding: 28px 0 48px; color: var(--muted); font: 15px/1.45 var(--sans); }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <p class="kicker">Development journey</p>
+    <h1>How the forty-five builds were made</h1>
+    <p class="lede">Each page below is one build in <a href="builds-ns/">builds-ns/</a>. The method was to keep the technique of a finished Opus build and change the subject. This page records that work, including the shortcuts and the parts that were not played through.</p>
+  </div>
+</header>
+<nav class="contents" aria-label="Sections">
+  <ul>
+    <li><a href="#arc">The arc</a></li>
+    <li><a href="#method">The method</a></li>
+    <li><a href="#limits">What was not done</a></li>
+    <li><a href="#b01">01 Focus</a></li>
+    <li><a href="#b02">02 Lyrics</a></li>
+    <li><a href="#b03">03 Films</a></li>
+    <li><a href="#b04">04 Titles</a></li>
+    <li><a href="#b05">05 Soulslikes</a></li>
+    <li><a href="#b06">06 Voxels</a></li>
+    <li><a href="#b07">07 Blender</a></li>
+    <li><a href="#b08">08 Pixels</a></li>
+    <li><a href="#b09">09 Artifacts</a></li>
+    <li><a href="#b10">10 Races</a></li>
+    <li><a href="#b11">11 Physics</a></li>
+    <li><a href="#b12">12 Multiplayer</a></li>
+    <li><a href="#b13">13 Glass</a></li>
+    <li><a href="#b14">14 Sketchbooks</a></li>
+    <li><a href="#b15">15 Sand</a></li>
+  </ul>
+</nav>
+<main>
+<div class="wrap">
+
+<section id="arc">
+  <h2>The arc</h2>
+  <p>The starting point was the fifteen playable variations in <span class="path">opus5.5_15_builds_codebear</span>, made as variations of the source video “Top 15 Things built with Claude OPUS 5.5.” The local folder was the quality bar: Eye Lab, the painted sea shanty, the weather film, the fifteen-second title, Frostbound, the volcano sandbox, the lighthouse Blender scene, the pixel dragon, the Rosetta Stone game, the wave racer, the arch bridge, Snow Day, the glass mosaic, the Japan Rail sketchbook, and the silk-road sand film.</p>
+  <p>A first set of forty-five builds was written into <a href="builds/">builds/</a> from the same forty-five subjects. Those pages are playable and much thinner than the sources. A night-camera page there is about 7 KB. The Eye Lab source is 112 KB. The baker film in that set is a small canvas scene with a karaoke line, which is the picture at <span class="path">/builds/02a-baker/</span>.</p>
+  <p>The second set, the one this page describes, was asked for without using those skills. Same forty-five subjects. New folder, <a href="builds-ns/">builds-ns/</a>. Full lyric movies, Blender heroes and clay time-lapses, and new sketchbook photographs. The work was a port: read the north-star file, keep its systems, splice in a new subject.</p>
+</section>
+
+<section id="method">
+  <h2>The method</h2>
+  <ol class="steps">
+    <li>Measure the source page. Eye Lab 112 KB, Frostbound 105 KB, volcano 76 KB, weather film 49 KB, title 33 KB, pixel dragon 26 KB, glass mosaic 25 KB, sand film 50 KB, Rosetta Stone 806 KB with one 668 KB block of inlined Three.js.</li>
+    <li>Copy the source’s structure. For the single-file games, a Python or Node script read the north-star HTML and replaced marked sections, then wrote three <span class="path">index.html</span> files. The scripts are <span class="path">_gen_focus.py</span>, <span class="path">_gen_soul.py</span>, <span class="path">_gen_voxel.py</span>, <span class="path">_b03.js</span>, <span class="path">_b04.js</span>, <span class="path">_b13.js</span>, <span class="path">_b15.js</span>, and <span class="path">_g08.js</span>.</li>
+    <li>For the lyric studios, copy the painted-video pipeline from <span class="path">02-clawd-goes-to-sea</span> (library, studio, composer, headless renderer), write a new song and new scenes, then render 150 seconds at 24 frames per second.</li>
+    <li>For Blender, write a procedural scene in Python, save a clay still after each step, render a PNG sequence in Eevee, and encode with ffmpeg. Blender 5.2 on this machine has no FFMPEG image format, so the movie is assembled afterward.</li>
+    <li>For the sketchbooks, generate stills with Higgsfield Soul (<span class="path">text2image_soul_v2</span>, 4:3), then run the Japan Rail <span class="path">build.js</span> so the page embeds the photographs.</li>
+    <li>Check that each file exists, that inline scripts parse, and that the movies have the right duration. Opening every page and playing it was not part of that check.</li>
+  </ol>
+</section>
+
+<section id="limits">
+  <h2>What was not done</h2>
+  <p>All forty-five folders have a playable file, and the rendered movies that were required are on disk. Each page was not clicked, played, or walked. The catalog was opened in a browser and showed forty-five links. The lyric files were measured at 150.0 seconds. The three Blender heroes were measured at 12.5 seconds.</p>
+  <p>Several pages are a port that still carries source names inside the code. The clearest case is the night-camera lab, which still quotes Gullstrand’s schematic eye. A later patch script, <span class="path">_patch_focus.py</span>, still draws an eye diagram. That leftover is called out under the camera build.</p>
+</section>
+
+<section id="b01">
+  <h2>01. Focus labs</h2>
+  <p>Source: <span class="path">01-eye-lab/index.html</span>. <span class="path">_gen_focus.py</span> kept the dark lab, IBM Plex, Three.js 0.170, the drag focus, the three stops, the exploded view, the circle-of-confusion blur, and the notes column. It spliced a new instrument into the same millimetre bench. The generator warned that all three output files still contained the words “Gullstrand” and “ciliary muscle.”</p>
+  <article class="build">
+    <h3><a href="builds-ns/01a-focus-camera/">01a Night street, a camera</a></h3>
+    <p>A 50 mm night bench. Subjects are a neon sign, a parked car, and a tower. Stops are f/2, f/5.6, and f/16. The page is 90 KB, against 112 KB for the eye. The focus control is still named <span class="path">#ciliary</span>, and the notes still cite Gullstrand No. 1, accommodation in diopters, and nodal points behind a cornea. The instrument geometry was replaced. The textbook block was not fully replaced.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/01b-focus-microscope/">01b A pond drop, a microscope</a></h3>
+    <p>A daylight compound microscope. The three planes are algae, a water flea, and silt. The stops are 4×, 10×, and 40×. A dirty objective is meant to veil the silt, and cleaning restores it. Exploded parts are eyepiece, objective, stage, and mirror. Same generator, same leftover eye-lab strings. 89 KB.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/01c-focus-telescope/">01c A rooftop, a telescope</a></h3>
+    <p>A night 700 mm f/10 refractor. Presets are a moon crater, Saturn, and a radio mast. The drag is the drawtube. The defect is chromatic fringe, and the correction is a minus-violet filter. Exploded parts are objective, drawtube, and eyepiece. 89 KB, with the same unreplaced eye notes.</p>
+  </article>
+</section>
+
+<section id="b02">
+  <h2>02. Painted lyric videos</h2>
+  <p>Source: <span class="path">02-clawd-goes-to-sea</span>. Each folder received <span class="path">lib.js</span>, <span class="path">studio.js</span>, <span class="path">studio.html</span>, <span class="path">compose.mjs</span>, <span class="path">render.mjs</span>, and a new cast. <span class="path">p5</span> and <span class="path">p5.brush</span> were installed. <span class="path">brush.load()</span> is called with no arguments, because a callback is treated as a renderer and throws. Headless Chrome needs SwiftShader or the canvas falls back to WebGL 1 and the brush library refuses it.</p>
+  <p><span class="path">node compose.mjs</span> wrote a 150-second instrumental WAV and <span class="path">assets/timing.js</span> for each film. There is no sung vocal. A one-second smoke render at 24 fps took about ten minutes and succeeded. Rendering all three films at once, with two Chrome workers each, timed out, and a later one-worker attempt died when three Chromes closed together after about 32 minutes. The films were then rendered one after another. Each finished at 150.0 seconds: baker 40 MB, submarine 20 MB, derby 34 MB.</p>
+  <article class="build">
+    <h3><a href="builds-ns/02a-baker/studio.html">02a Warm kitchen</a></h3>
+    <p>Night baker, cat, delivery cyclist, bread rising. The studio is the live page. The movie is <a href="builds-ns/02a-baker/out/film.mp4">out/film.mp4</a>. This is the remake of the thin left-weighted kitchen in <span class="path">builds/02a-baker/</span>.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/02b-sub/studio.html">02b Cold underwater dirge</a></h3>
+    <p>Sunken submarine, captain, dripping gauge, paper boat. No animals. The page title is Below. Movie: <a href="builds-ns/02b-sub/out/film.mp4">out/film.mp4</a>. This one had the most frames already drawn when the parallel render died, so the sequential pass resumed from those JPEGs.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/02c-derby/studio.html">02c Loud rink</a></h3>
+    <p>Roller derby chant: jammer, referee, flying helmet, stomps and a whistle. The page title is The Bank. Movie: <a href="builds-ns/02c-derby/out/film.mp4">out/film.mp4</a>.</p>
+  </article>
+</section>
+
+<section id="b03">
+  <h2>03. Coded pattern films</h2>
+  <p>Source: <span class="path">03-water-weather-code/index.html</span>, 49 KB. <span class="path">_b03.js</span> kept the play overlay, the pause and restart keys, the deterministic frame function, the <span class="path">?t=</span> still, the contact sheet, and the Web Audio engine (compressor, synthesized reverb, noise). It replaced the score and the pattern scenes. City is 45 KB, the hive 47 KB, the flood 47 KB. Scripts were syntax-checked. They were not listened through.</p>
+  <article class="build">
+    <h3><a href="builds-ns/03a-film-city/">03a City sleep</a></h3>
+    <p>One yellow window, then traffic lights, pigeons, steam, a subway, and dawn on a water tower. Piano and upright bass.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/03b-film-hive/">03b Hive</a></h3>
+    <p>One bee, a waggle, hex cells filling, fanning, a swarm, scouts returning. Violin and woodblock. The comb is hex math, not a texture.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/03c-film-flood/">03c Flash flood</a></h3>
+    <p>A tin cup, cracks, rain, braided channels, a wall of water, and the cup still there. Frame drum and low cello.</p>
+  </article>
+</section>
+
+<section id="b04">
+  <h2>04. Title sequences</h2>
+  <p>Source: <span class="path">04-title-sequence/index.html</span>, 33 KB, 15.0 seconds, one clock for picture and score, a 2.39:1 frame, a play gate. <span class="path">_b04.js</span> kept that clock and gate and invented three looks. The Meridian credit roll was not reused. The finished files are 29 KB, 29 KB, and 28 KB, short of the source. They were syntax-checked, not watched to the end.</p>
+  <article class="build">
+    <h3><a href="builds-ns/04a-title-atlantic/">04a NORTH ATLANTIC</a></h3>
+    <p>Cold sea. The only title is NORTH ATLANTIC.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/04b-title-kitchen/">04b KITCHEN, 4 A.M.</a></h3>
+    <p>A domestic night interior. The title text is exactly KITCHEN, 4 A.M.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/04c-title-mushroom/">04c THE LAST COURT OF THE MUSHROOM KING</a></h3>
+    <p>A storybook court drawn in the canvas. The title is the full line.</p>
+  </article>
+</section>
+
+<section id="b05">
+  <h2>05. Browser soulslikes</h2>
+  <p>Source: <span class="path">05-frostbound-monastery/index.html</span>, 105 KB. <span class="path">_gen_soul.py</span> kept Cinzel and Cormorant, the title screen, HP and stamina, the flask, YOU DIED, pointer lock, attack, block, dodge, rest, and the Three.js 0.160 bloom stack. It spliced a new level. The comment in the generator says the great bell group stays so the tick can still nudge it, which is a source leftover in the scene graph. Subway 93 KB, lagoon 94 KB, archive 92 KB. Not walked in a browser.</p>
+  <article class="build">
+    <h3><a href="builds-ns/05a-soul-subway/">05a Flooded subway</a></h3>
+    <p>Signal lamp and short sword. Banners: Mezzanine, Drowned Platform, Service Tunnel. Rest is a ticket booth. The title on the page reads SUBWAY.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/05b-soul-lagoon/">05b Coral lagoon radio telescope</a></h3>
+    <p>Noon, a canvas-suit diver and a knife. Banners: Dish Rim, Control Hut, Cable Trench. Rest is a generator shed. Creatures, not knights. Title: LAGOON.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/05c-soul-archive/">05c Candlelit tax archive</a></h3>
+    <p>No water and no snow. A clerk with a stamp-seal and a letter opener. Banners: Ledger Hall, Burning Files, Vault of Seals. Rest is a desk. Title: ARCHIVE.</p>
+  </article>
+</section>
+
+<section id="b06">
+  <h2>06. Voxel sandboxes</h2>
+  <p>Source: <span class="path">06-volcano-test/index.html</span>, 76 KB. <span class="path">_gen_voxel.py</span> kept the chunked volume, the fluid cellular automaton, the hotbar, the reflective liquid, and the day-night cycle, and replaced terrain generation and the two fluids. Each module script passed <span class="path">node --check</span>. Tide 73 KB, candy 73 KB, glacier 73 KB. Not played.</p>
+  <article class="build">
+    <h3><a href="builds-ns/06a-voxel-tide/">06a Tide-pool island</a></h3>
+    <p>Seawater and vent water become basalt. The tide rises and falls. The sea is the reflective surface.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/06b-voxel-candy/">06b Indoor candy factory</a></h3>
+    <p>Chocolate and cold milk become fudge. A mixer overflow replaces the volcano’s eruption. Day and night are meant to show through the windows.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/06c-voxel-glacier/">06c Glacier camp</a></h3>
+    <p>Meltwater and lamp oil become tar crust. A crevasse is cut into the height field. Oil is supposed to burn after dark, and the day curve is a long blue twilight.</p>
+  </article>
+</section>
+
+<section id="b07">
+  <h2>07. Procedural Blender scenes</h2>
+  <p>Source: <span class="path">07-storm-lighthouse</span>, used as a pipeline, not as a subject. Blender 5.2.1, engine <span class="path">BLENDER_EEVEE</span>. Each <span class="path">build_scene.py</span> builds the set from primitives, writes a clay still <span class="path">screenshots/step_XX.png</span> after each step with an Opus 5.5 badge, and saves a blend. <span class="path">render_final.py</span> renders 300 PNG frames. ffmpeg makes a 12.5-second hero at 24 fps and a clay time-lapse at 2 fps, which is 4 seconds for eight stills. A small <span class="path">index.html</span> was added afterward so the catalog can play both movies. The noodle build log also showed a Higgsfield 400 and a locked Blender extension file. The blend still saved.</p>
+  <article class="build">
+    <h3><a href="builds-ns/07a-glasshouse/">07a Glasshouse</a></h3>
+    <p>Blue hour, a storm arriving. Title GLASSHOUSE. Hero <a href="builds-ns/07a-glasshouse/out/hero.mp4">out/hero.mp4</a>, clay <a href="builds-ns/07a-glasshouse/out/clay-timelapse.mp4">out/clay-timelapse.mp4</a>. The first-pass glasshouse in <span class="path">builds/</span> had been framed too close and two clay steps were black. This pass is a new scene file, <span class="path">glasshouse.blend</span>.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/07b-noodle/">07b One noodle stall</a></h3>
+    <p>Rain, one puddle, door-sized neon. Shots logged as puddle, stall, bowls, neon, rain, stools, night, and a hero that reads the bowls. Title MIDNIGHT BROTH. Blend <span class="path">midnight_broth.blend</span>. Hero and clay are in <span class="path">out/</span>.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/07c-mine/">07c Open-pit mine</a></h3>
+    <p>Harsh noon, white dust, one haul truck, no rain. Title BENCH 7. Blend <span class="path">bench7.blend</span>. Eight clay stills. Hero is 12.5 seconds. Clay time-lapse is 4 seconds.</p>
+  </article>
+</section>
+
+<section id="b08">
+  <h2>08. Pixel actors</h2>
+  <p>Source: <span class="path">08-pixel-dragon/index.html</span>, 26 KB. A fixed palette, an indexed framebuffer, and a state machine of idle, charge, and action. No sprite sheets. <span class="path">_g08.js</span> wrote the three actors. They were grown once to add frames, then measured again at about 23 KB each. Syntax-checked. Not watched through a full loop in the browser.</p>
+  <article class="build">
+    <h3><a href="builds-ns/08a-pixel-keeper/">08a Pier keeper at night</a></h3>
+    <p>24 colors. Idle blinks, the charge warms a lantern, the action sweeps a beam across the water.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/08b-pixel-sumo/">08b Sumo, afternoon dohyo</a></h3>
+    <p>24 colors, daylight. Idle breathes, the charge throws salt, the action is a slap that shakes the ring.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/08c-pixel-angler/">08c Anglerfish</a></h3>
+    <p>16 colors, mostly black. Idle drifts, the lure brightens, the jaws close.</p>
+  </article>
+</section>
+
+<section id="b09">
+  <h2>09. Coded artifact games</h2>
+  <p>Source: <span class="path">09-rosetta-stone/index.html</span>. Line 141 is an inlined Three.js build of about 668 KB. The game script starts after it. Each new page copies that offline Three.js and replaces the dig with a new puzzle. No network after load. Voyager 735 KB, Phaistos 729 KB, violin 721 KB. Facts were constrained in the brief. The pages were not played to the ending.</p>
+  <article class="build">
+    <h3><a href="builds-ns/09a-artifact-voyager/">09a Voyager Golden Record</a></h3>
+    <p>A 1977 clean room. The player mounts images and the stylus. Captions use the real launch, 5 September 1977, and the Saturn flyby in November 1980. The end is the probe past Saturn.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/09b-artifact-phaistos/">09b Phaistos disc</a></h3>
+    <p>Found 3 July 1908 by Luigi Pernier. The player matches stamp-signs. The page is required to say the text is not deciphered, and not to invent a translation. The end is a museum case at night.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/09c-artifact-violin/">09c Cremona violin</a></h3>
+    <p>Candlelight. The player fits the bass bar under the bass-side top and the soundpost just behind the treble bridge foot. A Web Audio tone is supposed to change with the post. No secret-varnish claim. The end is a silent room.</p>
+  </article>
+</section>
+
+<section id="b10">
+  <h2>10. Arcade racers</h2>
+  <p>Source: <span class="path">10-wave-racer</span>. The split is <span class="path">index.html</span>, <span class="path">data.js</span>, <span class="path">world.js</span>, <span class="path">game.js</span>, <span class="path">ui.js</span>, and a vendored <span class="path">three.min.js</span>. Eight racers, three tracks, items that change the race, lap times. Theme data and world geometry were written per subject. The market folder had <span class="path">game.js</span> and <span class="path">ui.js</span>. The ice and chair folders did not, and none of the three had a title page. <span class="path">game.js</span> and <span class="path">ui.js</span> were copied from the market racer, which reads <span class="path">THEME</span> from <span class="path">data.js</span>. The title page was copied from Spraywave Rally and retitled. That wiring was not raced.</p>
+  <article class="build">
+    <h3><a href="builds-ns/10a-race-market/">10a Night-market bicycles</a></h3>
+    <p>Title card STALLSHIFT / NIGHT MARKET. Delivery bicycles, stalls, eight named riders in <span class="path">data.js</span>.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/10b-race-ice/">10b Iceboats at dawn</a></h3>
+    <p>Title card FROSTKEEL / ICE. Tracks are open ice, fishing holes, and a narrowing black lead. Items are a gust and a drag anchor. <span class="path">world.js</span> builds floes and holes. The driving code is the market <span class="path">game.js</span>.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/10c-race-chairs/">10c Office chairs</a></h3>
+    <p>Title card ROLLCALL / CHAIRS. Fluorescent convention center: exhibit hall, escalators, loading dock. Coffee spill boosts. Lanyards slow the leader. Same shared <span class="path">game.js</span>.</p>
+  </article>
+</section>
+
+<section id="b11">
+  <h2>11. Sketch to rigid body</h2>
+  <p>Source: <span class="path">11-arch-bridge</span>. Three.js plus cannon-es. The page loads one <span class="path">bundle.js</span> so it works from a file URL. The fall is supposed to come from the solver. Removing the support should drop the whole structure, which is the failure the arch bridge was known for (the keystone drop only took the crown).</p>
+  <p>The source files (<span class="path">src/main.js</span>, a subject module, <span class="path">physics-config.js</span>, <span class="path">build/build.js</span>) were written first. The JPEG sketches and the bundles were not there yet. <span class="path">sketch/draw.py</span> then drew graphite on cream paper with Pillow, not a photograph: <span class="path">crane.jpg</span>, <span class="path">chair.jpg</span>, <span class="path">well.jpg</span>. <span class="path">node build/build.js</span> embedded each JPEG and esbuild wrote an IIFE bundle of about 1.6 to 1.7 MB. A physics self-test was part of the brief. A passing self-test log was not recorded here.</p>
+  <article class="build">
+    <h3><a href="builds-ns/11a-sketch-crane/">11a Harbor crane</a></h3>
+    <p>A crate on a cable. Sliders are mass and friction. The button is “Remove main pin.” Defaults should hold the crane. Pulling the pin should drop mast, jib, and body from the solver.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/11b-sketch-chair/">11b Kitchen chair</a></h3>
+    <p>A heavy book on the seat. Pulling one dowel should fold the chair. The sketch is a wooden kitchen chair.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/11c-sketch-well/">11c Spiral stair in a well</a></h3>
+    <p>A bucket on a rope. Removing one tread should drop the spiral, including treads that are not only the neighbor of the gap.</p>
+  </article>
+</section>
+
+<section id="b12">
+  <h2>12. Local multiplayer</h2>
+  <p>Source: <span class="path">12-snow-day</span>. Express and <span class="path">ws</span> on one HTTP server, an authoritative tick, client scripts for world, minimap, and chat, no mouse-look so two windows can sit side by side. The source default port is 3512. These three use 3531, 3532, and 3533 so they do not collide with Snow Day or with the first-pass servers on 3521–3523. Each README documents <span class="path">?name=</span>. The servers were not left running, and a two-window sync was not timed.</p>
+  <article class="build">
+    <h3><a href="builds-ns/12a-mp-lobby/">12a Hotel lobby</a></h3>
+    <p>Port 3531. Sit-down floor buffers. Driving clears confetti. Confetti returns. Run instructions are in the folder README.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/12b-mp-orchard/">12b Dawn apple orchard</a></h3>
+    <p>Port 3532. Heated carts, a cider barn. Frost melts in the lanes and creeps back. Hands hold a tiller and a pruning lamp.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/12c-mp-salt/">12c Noon salt flat</a></h3>
+    <p>Port 3533. Brine trucks. The landmark is a half-buried airliner. Wet roads dry white.</p>
+  </article>
+</section>
+
+<section id="b13">
+  <h2>13. Glass mosaic films</h2>
+  <p>Source: <span class="path">13-four-seasons-glass/index.html</span>, 25 KB. One HTML file, WebGL2, no libraries and no images. Instanced glass tiles break and reform over about 80 seconds. <span class="path">_b13.js</span> wrote three films at 23 KB, 23 KB, and 23 KB, a little under the source. Syntax-checked. Not watched.</p>
+  <article class="build">
+    <h3><a href="builds-ns/13a-glass-harbor/">13a Harbor, noon to night</a></h3>
+    <p>Gulls, a ferry, lanterns coming on. Tiles shatter on the light change and reform as the night harbor.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/13b-glass-table/">13b Kitchen table, one argument</a></h3>
+    <p>No sky and no season. Afternoon down to one lamp. Two cups, a torn letter, two hands.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/13c-glass-reef/">13c Reef</a></h3>
+    <p>Color drains toward white, then returns. Parrotfish, a turtle, branching coral.</p>
+  </article>
+</section>
+
+<section id="b14">
+  <h2>14. Marker sketchbooks</h2>
+  <p>Source: <span class="path">14-japan-rail-sketchbook</span>. <span class="path">template.html</span> and <span class="path">build.js</span> were copied, then the photographs were generated and the template was built into <span class="path">index.html</span>. The drawing on the page is a canvas marker redraw. The photograph sits in the corner with the filename as the caption. Dragging and the arrow keys curl the page.</p>
+  <p>Stills came from Higgsfield Soul 2.0, job type <span class="path">text2image_soul_v2</span>, aspect 4:3, through <span class="path">higgsfield.cmd</span>. Ten photographs per book. <span class="path">build.js</span> embedded them as base64, which is why the pages are 30 MB, 37 MB, and 30 MB. The hospital page was not re-checked in the browser after the embed. The first-pass books used six cheaper stills and a hatch redraw. These are new photographs.</p>
+  <article class="build">
+    <h3><a href="builds-ns/14a-hospital/">14a Hospital night shift</a></h3>
+    <p>Ten frames, including a nurses’ station, a corridor with faces, a vending machine, an empty gurney, a charting desk, and a stairwell. People are supposed to stay recognizable in the corner photograph.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/14b-auction/">14b Livestock auction at noon</a></h3>
+    <p>Ten frames: the ring, the auctioneer, cattle pens, dust, hats at the rail, a loading chute. The crowd is supposed to stay a crowd.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/14c-ferry/">14c Empty winter ferry</a></h3>
+    <p>Ten frames: cafeteria, car deck, empty bow, empty seats, one horizon. At most one person. A crowd was not invented.</p>
+  </article>
+</section>
+
+<section id="b15">
+  <h2>15. Sand-table films</h2>
+  <p>Source: <span class="path">15-silk-road-sand/index.html</span>, 50 KB, 120 seconds. Scenes are drawn as sand thickness, lit in a fragment shader, and blown sideways into the next picture. Year and subtitle sit at the top left in serif type. Music is synthesized in the page. No audio file. <span class="path">_b15.js</span> replaced the caravan scenes. Flight is 41 KB. The river and smallpox films are 35 KB, short of the source. Syntax-checked. Not watched, and the music was not heard.</p>
+  <article class="build">
+    <h3><a href="builds-ns/15a-sand-flight/">15a Flight, 1903–1969</a></h3>
+    <p>Wright flyer, a barnstormer, a DC-3, a jet, Apollo 11. Years 1903, 1927, 1936, 1958, 1969. Brass and snare.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/15b-sand-river/">15b One river, 1900–2020</a></h3>
+    <p>A channel, a steamboat, a dam, a fish ladder, a dry bed. No armies and no aircraft. Flute and a low drum.</p>
+  </article>
+  <article class="build">
+    <h3><a href="builds-ns/15c-sand-smallpox/">15c Smallpox, 1796–1980</a></h3>
+    <p>Jenner in 1796, a crowded ward, a vaccination line, the last natural case in 1977, eradication declared in 1980. Those dates are the historical ones. The ward is a sand silhouette, not a clinical plate. Pump organ.</p>
+  </article>
+</section>
+
+</div>
+</main>
+<footer>
+  <div class="wrap">
+    <p>Catalog: <a href="builds-ns/">builds-ns/</a>. First set: <a href="builds/">builds/</a>. Guide to the earlier skills: <a href="guide.html">guide.html</a>. This page describes the north-star pass. It is not a claim that every build was played.</p>
+  </div>
+</footer>
+</body>
+</html>

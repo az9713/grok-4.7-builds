@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>One River</title>
+<style>
+html,body{margin:0;height:100%;background:#c4a574;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+button{position:fixed;left:18px;bottom:16px;font:16px Georgia,serif;padding:8px 14px;background:#f4ead6;border:1px solid #6a4a28;cursor:pointer}
+</style></head><body>
+<canvas id="c"></canvas>
+<button id="play">Play</button>
+<script>
+const BEATS = [{"year": 1900, "sub": "a free channel", "id": "channel"}, {"year": 1930, "sub": "the steamboat", "id": "boat"}, {"year": 1960, "sub": "the dam", "id": "dam"}, {"year": 1990, "sub": "a fish ladder", "id": "ladder"}, {"year": 2020, "sub": "a dry bed", "id": "dry"}];
+const KIND = "flute";
+const c=document.getElementById("c"), g=c.getContext("2d");
+const D=120;
+let actx, playing=false, t0=0;
+const grains=[];
+function fit(){c.width=innerWidth*devicePixelRatio;c.height=innerHeight*devicePixelRatio;g.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); if(!grains.length){ for(let i=0;i<180;i++) grains.push({x:Math.random(),y:Math.random(),v:0.04+Math.random()*0.08,s:Math.random()*2+0.5}); }}
+addEventListener("resize",fit); fit();
+function env(o,a,when,dur,gain){
+  a.gain.setValueAtTime(0.0001,when);
+  a.gain.exponentialRampToValueAtTime(gain,when+0.03);
+  a.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+  o.connect(a); a.connect(actx.destination); o.start(when); o.stop(when+dur+0.05);
+}
+function compose(){
+  for(let i=0;i<D;i+=KIND==="organ"?1.2:0.5){
+    const when=actx.currentTime+i;
+    if(KIND==="brass"){
+      const o=actx.createOscillator(), a=actx.createGain();
+      o.type="sawtooth"; o.frequency.value=[196,220,247,262][(i*2|0)%4];
+      env(o,a,when,0.35,0.04);
+      if(i%1<0.5){ const n=actx.createOscillator(), g2=actx.createGain(); n.type="square"; n.frequency.value=180; env(n,g2,when,0.05,0.05); }
+    } else if(KIND==="flute"){
+      const o=actx.createOscillator(), a=actx.createGain();
+      o.type="sine"; o.frequency.value=[523,587,659,698,784][(i*2|0)%5];
+      env(o,a,when,0.45,0.05);
+      if(i%2<0.5){ const n=actx.createOscillator(), g2=actx.createGain(); n.type="triangle"; n.frequency.value=90; env(n,g2,when,0.2,0.06); }
+    } else {
+      const o=actx.createOscillator(), a=actx.createGain();
+      o.type="triangle"; o.frequency.value=[196,247,294,330][(i|0)%4];
+      env(o,a,when,1.0,0.05);
+      const n=actx.createOscillator(), g2=actx.createGain();
+      n.type="sine"; n.frequency.value=392; env(n,g2,when+0.1,0.8,0.03);
+    }
+  }
+}
+function plane(w,h){ g.fillStyle="#d7b98a"; g.fillRect(0,h*0.62,w,h*0.38); g.fillStyle="#e7d3ad"; g.fillRect(0,h*0.55,w*0.35,8); }
+function drawBeat(name,w,h,local){
+  g.lineWidth=2; g.strokeStyle="#5a3b24"; g.fillStyle="#6a452c";
+  if(name==="wright"){ g.beginPath(); g.moveTo(w*0.3,h*0.62); g.lineTo(w*0.7,h*0.62); g.moveTo(w*0.4,h*0.62); g.lineTo(w*0.55,h*0.48); g.lineTo(w*0.72,h*0.5); g.stroke(); }
+  if(name==="barn"){ g.strokeRect(w*0.42,h*0.5,w*0.12,h*0.12); g.beginPath(); g.moveTo(w*0.4,h*0.5); g.lineTo(w*0.48,h*0.42); g.lineTo(w*0.56,h*0.5); g.stroke(); }
+  if(name==="dc3"){ g.beginPath(); g.ellipse(w*0.5,h*0.5,w*0.16,18,0,0,7); g.stroke(); g.beginPath(); g.moveTo(w*0.4,h*0.5); g.lineTo(w*0.62,h*0.42); g.stroke(); }
+  if(name==="jet"){ g.beginPath(); g.moveTo(w*0.3,h*0.52); g.lineTo(w*0.75,h*0.48); g.lineTo(w*0.7,h*0.54); g.closePath(); g.stroke(); }
+  if(name==="apollo"){ g.beginPath(); g.moveTo(w*0.5,h*0.35); g.lineTo(w*0.46,h*0.62); g.lineTo(w*0.54,h*0.62); g.closePath(); g.stroke(); g.fillRect(w*0.48,h*0.28,w*0.04,12); }
+  if(name==="channel"){ g.beginPath(); g.moveTo(0,h*0.7); g.quadraticCurveTo(w*0.5,h*0.4,w,h*0.65); g.stroke(); }
+  if(name==="boat"){ g.strokeRect(w*0.4,h*0.58,w*0.16,h*0.06); g.beginPath(); g.moveTo(w*0.48,h*0.58); g.lineTo(w*0.48,h*0.4); g.stroke(); }
+  if(name==="dam"){ g.fillRect(w*0.45,h*0.42,w*0.06,h*0.28); g.beginPath(); g.moveTo(0,h*0.5); g.lineTo(w*0.45,h*0.5); g.stroke(); }
+  if(name==="ladder"){ for(let i=0;i<6;i++) g.strokeRect(w*0.55, h*0.48+i*12, 40, 8); }
+  if(name==="dry"){ g.setLineDash([6,6]); g.beginPath(); g.moveTo(0,h*0.72); g.quadraticCurveTo(w*0.5,h*0.6,w,h*0.74); g.stroke(); g.setLineDash([]); }
+  if(name==="lancet"){ g.beginPath(); g.arc(w*0.62,h*0.58,28,0,7); g.stroke(); g.beginPath(); g.moveTo(w*0.4,h*0.4); g.lineTo(w*0.58,h*0.55); g.stroke(); }
+  if(name==="ward"){ for(let i=0;i<5;i++) g.strokeRect(w*0.2+i*w*0.12,h*0.5,w*0.08,h*0.12); }
+  if(name==="line"){ for(let i=0;i<8;i++){ g.beginPath(); g.arc(w*0.2+i*w*0.08,h*0.6,8,0,7); g.stroke(); } }
+  if(name==="empty"){ g.strokeRect(w*0.35,h*0.5,w*0.2,h*0.14); }
+  if(name==="last"){ g.font="20px Georgia,serif"; g.fillText("last natural case", w*0.34, h*0.5); }
+}
+function frame(now){
+  const w=innerWidth,h=innerHeight;
+  const t=playing?Math.min(D,(now-t0)/1000):0;
+  const idx=Math.min(BEATS.length-1, Math.floor(t/ (D/BEATS.length)));
+  const beat=BEATS[idx];
+  g.fillStyle="#e6d2ad"; g.fillRect(0,0,w,h);
+  grains.forEach(gr=>{ gr.x=(gr.x+gr.v*0.016)%1; g.fillStyle="rgba(120,80,40,0.35)"; g.fillRect(gr.x*w, gr.y*h, gr.s, gr.s); });
+  plane(w,h);
+  drawBeat(beat.id,w,h,t);
+  g.fillStyle="#2a1c12";
+  g.font="44px Georgia, 'Palatino Linotype', serif";
+  g.fillText(String(beat.year), 28, 64);
+  g.font="20px Georgia, serif";
+  g.fillText(beat.sub, 28, 96);
+  if(!playing||t<D) requestAnimationFrame(frame);
+}
+document.getElementById("play").onclick=()=>{ actx=new AudioContext(); compose(); playing=true; t0=performance.now(); document.getElementById("play").remove(); };
+requestAnimationFrame(frame);
+</script></body></html>

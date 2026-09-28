@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Phaistos Disc</title>
+<style>
+body{margin:0;background:#14110e;color:#f4ead8;font:18px/1.45 Georgia,serif}
+main{max-width:760px;margin:0 auto;padding:32px 18px 80px}
+button{background:#f4ead8;color:#1a1612;border:0;padding:8px 12px;margin:4px;font:inherit;cursor:pointer}
+.slot{display:inline-block;width:120px;height:80px;margin:6px;background:#2a241c;vertical-align:top;padding:8px}
+#end{display:none}
+</style></head><body><main>
+<h1>Phaistos Disc</h1>
+<p>A noon dig in Crete. Match the stamp-signs. The text is not deciphered. This page will not invent a translation.</p>
+<div id="play"></div>
+<p id="note"></p>
+<div id="end"><h2>The disc is in a museum case after dark.</h2><p>Found 3 July 1908 at Phaistos by Luigi Pernier. About 241 signs, 45 types, stamped into clay. Undeciphered.</p></div>
+</main>
+<script>
+const FACTS=[{"prompt": "When was it found?", "note": "", "choices": [{"label": "1908, Phaistos", "ok": true, "why": ""}, {"label": "1922, Tutankhamun's tomb", "ok": false, "why": "That is a different find."}]}, {"prompt": "What do the signs say?", "note": "", "choices": [{"label": "The text is not deciphered", "ok": true, "why": ""}, {"label": "A hymn to a named king", "ok": false, "why": "No agreed reading exists. This page will not invent one."}]}, {"prompt": "Where does the day end?", "note": "", "choices": [{"label": "In a museum case", "ok": true, "why": ""}, {"label": "Back in the soil, unread on purpose", "ok": false, "why": "The disc is held by the Heraklion Archaeological Museum."}]}];
+const play=document.getElementById("play");
+let step=0, mounted=[];
+function render(){
+  const f=FACTS[step];
+  play.innerHTML=`<p>${f.prompt}</p>`+f.choices.map((c,i)=>`<button data-i="${i}">${c.label}</button>`).join("");
+  document.getElementById("note").textContent=f.note||"";
+  play.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    const choice=f.choices[+b.dataset.i];
+    if(!choice.ok){ document.getElementById("note").textContent=choice.why; return; }
+    step++;
+    if(step>=FACTS.length){ play.innerHTML=""; document.getElementById("end").style.display="block"; }
+    else render();
+  });
+}
+render();
+</script></body></html>

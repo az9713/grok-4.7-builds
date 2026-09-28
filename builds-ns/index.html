@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Forty-five builds</title>
+<style>
+body{margin:0;background:#f3ecdf;color:#1a1612;font:18px/1.45 Georgia,serif}
+main{max-width:880px;margin:0 auto;padding:40px 20px 80px}
+h1{font-weight:500;font-size:42px;margin:0 0 8px}
+p{color:#4a4036}
+a{color:#8f2d14}
+ul{padding:0;list-style:none}
+li{padding:6px 0;border-bottom:1px solid #e2d5c3}
+</style></head><body>
+<main>
+<h1>Forty-five builds</h1>
+<p>Three subjects for each of the fifteen techniques. Lyric studios open the painted page. Blender pages play the hero and the clay time-lapse. Multiplayer pages play one person here. Two windows still use the local server in that folder’s README. The earlier set is in <a href="../builds/">builds/</a>.</p>
+<ul id="list"></ul>
+</main>
+<script>
+const items = [
+["01a Focus — night street camera","01a-focus-camera/"],
+["01b Focus — pond microscope","01b-focus-microscope/"],
+["01c Focus — rooftop telescope","01c-focus-telescope/"],
+["02a Lyric — warm kitchen","02a-baker/studio.html"],
+["02b Lyric — sunken submarine","02b-sub/studio.html"],
+["02c Lyric — roller derby","02c-derby/studio.html"],
+["03a Pattern film — city sleep","03a-film-city/"],
+["03b Pattern film — hive","03b-film-hive/"],
+["03c Pattern film — flash flood","03c-film-flood/"],
+["04a Title — NORTH ATLANTIC","04a-title-atlantic/"],
+["04b Title — KITCHEN, 4 A.M.","04b-title-kitchen/"],
+["04c Title — mushroom king","04c-title-mushroom/"],
+["05a Soulslike — flooded subway","05a-soul-subway/"],
+["05b Soulslike — lagoon telescope","05b-soul-lagoon/"],
+["05c Soulslike — tax archive","05c-soul-archive/"],
+["06a Voxels — tide pool","06a-voxel-tide/"],
+["06b Voxels — candy factory","06b-voxel-candy/"],
+["06c Voxels — glacier camp","06c-voxel-glacier/"],
+["07a Blender — glasshouse","07a-glasshouse/"],
+["07b Blender — noodle stall","07b-noodle/"],
+["07c Blender — open-pit mine","07c-mine/"],
+["08a Pixel — pier keeper","08a-pixel-keeper/"],
+["08b Pixel — sumo","08b-pixel-sumo/"],
+["08c Pixel — anglerfish","08c-pixel-angler/"],
+["09a Artifact — Voyager record","09a-artifact-voyager/"],
+["09b Artifact — Phaistos disc","09b-artifact-phaistos/"],
+["09c Artifact — Cremona violin","09c-artifact-violin/"],
+["10a Race — night market","10a-race-market/"],
+["10b Race — iceboats","10b-race-ice/"],
+["10c Race — office chairs","10c-race-chairs/"],
+["11a Sketch — harbor crane","11a-sketch-crane/"],
+["11b Sketch — kitchen chair","11b-sketch-chair/"],
+["11c Sketch — well stair","11c-sketch-well/"],
+["12a Multiplayer — hotel lobby","12a-mp-lobby/"],
+["12b Multiplayer — orchard","12b-mp-orchard/"],
+["12c Multiplayer — salt flat","12c-mp-salt/"],
+["13a Glass — harbor","13a-glass-harbor/"],
+["13b Glass — kitchen table","13b-glass-table/"],
+["13c Glass — reef","13c-glass-reef/"],
+["14a Sketchbook — hospital","14a-hospital/"],
+["14b Sketchbook — auction","14b-auction/"],
+["14c Sketchbook — winter ferry","14c-ferry/"],
+["15a Sand — flight","15a-sand-flight/"],
+["15b Sand — one river","15b-sand-river/"],
+["15c Sand — smallpox","15c-sand-smallpox/"]
+];
+document.getElementById("list").innerHTML = items.map(([n,h])=>`<li><a href="${h}">${n}</a></li>`).join("");
+</script>
+</body></html>
