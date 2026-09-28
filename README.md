@@ -6,7 +6,7 @@ Each page keeps a technique from [Top 15 Things built with Claude OPUS 5.5](http
 
 ## Play
 
-The site is GitHub Pages. Start at the [project page](https://az9713.github.io/opus-5.5-45-builds/).
+The site is GitHub Pages. Start at the [project page](https://az9713.github.io/grok-4.7-builds/). The repo is [az9713/grok-4.7-builds](https://github.com/az9713/grok-4.7-builds).
 
 - [Forty-five builds](builds-ns/) is the full set: lyric films, Blender heroes and clay time-lapses, sketchbooks, and the rest.
 - [Earlier set](builds/) is the same subjects, built first.
